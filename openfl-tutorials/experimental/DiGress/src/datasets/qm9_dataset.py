@@ -194,7 +194,7 @@ class QM9Dataset(InMemoryDataset):
 
 
 class QM9DataModule(MolecularDataModule):
-    def __init__(self, cfg, shard=None):
+    def __init__(self, cfg, shard=None, split="scaffold"):
         self.datadir = cfg.dataset.datadir
         self.remove_h = cfg.dataset.remove_h
 
@@ -220,38 +220,59 @@ class QM9DataModule(MolecularDataModule):
                                        target_prop=target, transform=transform)}
 
         if shard:
-            train_smiles = np.load(root_path+'train_smiles_no_h.npy')
-            
-            # Create data shards by scaffolds
-            scaffold_dict = defaultdict(list)
-            for idx, smiles in enumerate(train_smiles):
-                scaffold = get_scaffold(smiles)
-                scaffold_dict[scaffold].append(idx)
-            
-            scaffold_keys = list(scaffold_dict.keys())
-            
-            N_collabs = 2
-            collab1 = []
-            collab2 = []
-            
-            tot_scaffolds = len(scaffold_keys)
-            for idx, key in enumerate(scaffold_keys):
-                 if len(collab1) < len(train_smiles)//2:
-                    # Assign a fraction of the total scaffolds to each collaborator
-                    collab1 += scaffold_dict[key]
-                 else:
-                    collab2 += scaffold_dict[key]
-            
-            collab1_tr = datasets['train'][collab1]
-            collab2_tr = datasets['train'][collab2]
-            if shard == 1: 
-                datasets = {'train': datasets['train'][collab1],
-                            'val': datasets['val'][:len(datasets['val'])//2],
-                            'test': datasets['test']}
-            elif shard == 2:
-                datasets = {'train': datasets['train'][collab2],
-                            'val': datasets['val'][len(datasets['val'])//2:],
-                            'test': datasets['test']}
+            if split == "random":
+                print("Random dataset split selected")
+                if shard == 1:
+                    datasets = {'train': datasets['train'][:len(datasets['train'])//2],
+                                'val': datasets['val'][:len(datasets['val'])//2],
+                                'test': datasets['test']}
+                elif shard == 2:
+                    datasets = {'train': datasets['train'][len(datasets['train'])//2:],
+                                'val': datasets['val'][len(datasets['val'])//2:],
+                                'test': datasets['test']}
+                
+                else:
+                    print(f"Max. collabs = 2")
+
+            elif split == "scaffold": # Split dataset based on scaffolds
+
+                print("Scaffold dataset split selected")
+                train_smiles = np.load(root_path+'train_smiles_no_h.npy')
+                
+                # Create data shards by scaffolds
+                scaffold_dict = defaultdict(list)
+                for idx, smiles in enumerate(train_smiles):
+                    scaffold = get_scaffold(smiles)
+                    scaffold_dict[scaffold].append(idx)
+                
+                scaffold_keys = list(scaffold_dict.keys())
+                
+                N_collabs = 2
+                collab1 = []
+                collab2 = []
+                
+                tot_scaffolds = len(scaffold_keys)
+                print(tot_scaffolds)
+                if N_collabs > tot_scaffolds:
+                    print(f"Number of collaborators cannot exceed {tot_scaffolds}")
+
+                for idx, key in enumerate(scaffold_keys):
+                    if len(collab1) < len(train_smiles)//N_collabs:
+                        # Assign a fraction of the total scaffolds to each collaborator
+                        collab1 += scaffold_dict[key]
+                    else:
+                        collab2 += scaffold_dict[key]
+                
+                if shard == 1: 
+                    datasets = {'train': datasets['train'][collab1],
+                                'val': datasets['val'][:len(datasets['val'])//2],
+                                'test': datasets['test']}
+                elif shard == 2:
+                    datasets = {'train': datasets['train'][collab2],
+                                'val': datasets['val'][len(datasets['val'])//2:],
+                                'test': datasets['test']}
+                else:
+                    print(f"Max. collabs = 2")
             
         super().__init__(cfg, datasets)
 
