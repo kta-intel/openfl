@@ -4,6 +4,7 @@ from omegaconf import OmegaConf, open_dict
 from torch_geometric.utils import to_dense_adj, to_dense_batch
 import torch
 import omegaconf
+import wandb
 # import wandb
 
 
