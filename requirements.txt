@@ -22,7 +22,7 @@ certifi==2024.6.2
 cffi==1.16.0
 chardet==5.2.0
 charset-normalizer==3.3.2
-click==8.1.7
+click==8.0.1
 cloudpickle==3.0.0
 cmake==3.25.0
 comm==0.2.2
@@ -34,7 +34,7 @@ decorator==5.1.1
 defusedxml==0.7.1
 dill==0.3.6
 docker==7.1.0
-dynaconf==3.2.5
+dynaconf==3.1.7
 exceptiongroup==1.2.1
 execnb==0.1.6
 executing==2.0.1
@@ -49,7 +49,7 @@ frozenlist==1.4.1
 fsspec==2024.6.1
 ghapi==1.0.5
 greenlet==3.0.3
-grpcio==1.64.1
+grpcio~=1.48.2
 h11==0.14.0
 httpcore==1.0.5
 httpx==0.27.0
@@ -128,7 +128,7 @@ pip==24.0
 platformdirs==4.2.2
 prometheus_client==0.20.0
 prompt_toolkit==3.0.47
-protobuf==3.20.3
+protobuf==3.19.6
 psutil==6.0.0
 ptyprocess==0.7.0
 pure-eval==0.2.2
