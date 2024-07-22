@@ -8,7 +8,7 @@ from openfl.federated import PyTorchDataLoader
 from omegaconf import OmegaConf
 
 from src.digress.analysis.visualization import MolecularVisualization
-from src.digress.datasets import guacamol_dataset
+from src.digress.datasets import guacamol_dataset, qm9_dataset
 from src.digress.diffusion.extra_features import DummyExtraFeatures, ExtraFeatures
 from src.digress.diffusion.extra_features_molecular import ExtraMolecularFeatures
 from src.digress.metrics.molecular_metrics import SamplingMolecularMetrics
@@ -18,10 +18,10 @@ from src.digress.metrics.molecular_metrics_discrete import TrainMolecularMetrics
 logger = getLogger(__name__)
 
 
-class GuacamolDataLoader(PyTorchDataLoader):
+class DiGressDataLoader(PyTorchDataLoader):
     """PyTorch data loader for MNIST dataset."""
 
-    def __init__(self, data_path, batch_size, **kwargs):
+    def __init__(self, data_path, batch_size, data_config_path, **kwargs):
         """Instantiate the data object.
 
         Args:
@@ -31,18 +31,14 @@ class GuacamolDataLoader(PyTorchDataLoader):
         """
         super().__init__(batch_size, **kwargs)
 
-        #TODO: Let user specify path in plan.yaml (let it default to workspace directory)
-        self.cfg = OmegaConf.load('./src/digress_config.yaml')
-
-        if self.cfg.dataset.name != 'guacamol':
-            raise ValueError('GuacamolDataLoader is only compatible with the guacamol dataset')
+        self.cfg = OmegaConf.load(data_config_path)
 
         self.cfg.train.batch_size = self.batch_size
         self.cfg.dataset.datadir = data_path
 
         self.datamodule, self.model_kwargs = load_datamodule_and_model_args(self.cfg)
 
-        if self.datamodule:
+        if self.datamodule and self.cfg.dataset.name == 'guacamol':
             self.datamodule = reduce_size(self.datamodule, train_size=0.10, val_size=0.10)
 
     def get_feature_shape(self):
@@ -52,7 +48,6 @@ class GuacamolDataLoader(PyTorchDataLoader):
     def get_train_loader(self):
         """Return train dataloader."""
         return self.datamodule.train_dataloader()
-        # return self.datamodule.train_dataloader().dataset[:100]
 
     def get_train_data_size(self):
         """Return size of train dataset."""
@@ -61,11 +56,11 @@ class GuacamolDataLoader(PyTorchDataLoader):
     def get_valid_loader(self):
         """Return validation dataloader."""
         return self.datamodule.val_dataloader()
-        # return self.datamodule.val_dataloader().dataset[:100]
 
     def get_valid_data_size(self):
         """Return size of validation dataset."""
         return len(self.datamodule.val_dataset)
+
 
 def load_datamodule_and_model_args(cfg):
     """
@@ -75,18 +70,27 @@ def load_datamodule_and_model_args(cfg):
     Return:
         datamodule and model args.
     """
-    # ######## DEBUG ###########
-    # cfg.dataset.datadir = '../../federated_experiment/collaborator1/split_1'
-    # datamodule = guacamol_dataset.GuacamolDataModule(cfg)
-    # ######## DEBUG ###########
 
-    if cfg.dataset.datadir == 'initialize':
-        datamodule = None
-    else:
-        # cfg.dataset.datadir = '../../federated_experiment/collaborator1/split_1'
-        datamodule = guacamol_dataset.GuacamolDataModule(cfg)
+    if cfg.dataset.name == 'guacamol':
+        if cfg.dataset.datadir == 'initialize':
+            datamodule = None
+        else:
+            datamodule = guacamol_dataset.GuacamolDataModule(cfg)
 
-    dataset_infos = guacamol_dataset.Guacamolinfos(datamodule, cfg)
+        dataset_infos = guacamol_dataset.Guacamolinfos(datamodule=datamodule, cfg=cfg)
+        train_smiles = None
+
+    elif cfg.dataset.name == 'qm9':
+        if cfg.dataset.datadir == 'initialize':
+            datamodule = None
+            dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
+            train_smiles = None
+        else:
+            datamodule = qm9_dataset.QM9DataModule(cfg)
+            dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
+            train_smiles = qm9_dataset.get_train_smiles(cfg=cfg, train_dataloader=datamodule.train_dataloader(),
+                                                        dataset_infos=dataset_infos, evaluate_dataset=False)
+
 
     if cfg.model.type == 'discrete' and cfg.model.extra_features is not None:
         extra_features = ExtraFeatures(cfg.model.extra_features, dataset_info=dataset_infos)
@@ -101,7 +105,7 @@ def load_datamodule_and_model_args(cfg):
     if cfg.model.type == 'discrete':
         train_metrics = TrainMolecularMetricsDiscrete(dataset_infos)
 
-    sampling_metrics = SamplingMolecularMetrics(dataset_infos, train_smiles=None)
+    sampling_metrics = SamplingMolecularMetrics(dataset_infos, train_smiles=train_smiles)
     visualization_tools = MolecularVisualization(cfg.dataset.remove_h, dataset_infos=dataset_infos)
 
     model_kwargs = {'dataset_infos': dataset_infos, 'train_metrics': train_metrics,

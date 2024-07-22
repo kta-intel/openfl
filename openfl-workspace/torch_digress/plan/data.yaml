@@ -7,5 +7,5 @@
 
 # collaborator_name ,data_directory_path
 agg,initialize
-collaborator1,../../federated_experiment/collaborator1/split_1
-collaborator2,../../federated_experiment/collaborator1/split_1
+collaborator1,data/split_1
+collaborator2,data/split_2
