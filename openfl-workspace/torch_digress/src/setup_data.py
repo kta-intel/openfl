@@ -49,7 +49,7 @@ def split_raw_data(root_dir, output_dir=None, num_splits=1):
 
     # Load the molecular structures from the SDF file
     sdf_path = path.join(root_dir, 'gdb9.sdf')
-    sdf_supplier = Chem.SDMolSupplier(sdf_path)
+    sdf_supplier = Chem.SDMolSupplier(sdf_path, removeHs=False, sanitize=False)
     molecules = [mol for mol in sdf_supplier if mol is not None]
 
     # Load the molecular properties from the CSV file

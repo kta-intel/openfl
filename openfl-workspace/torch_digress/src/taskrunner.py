@@ -58,9 +58,12 @@ class DiGress(PyTorchTaskRunner):
             torch.cuda.empty_cache()
             torch.set_float32_matmul_precision('medium')
 
-        trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=epochs)
+        if self.device == 'cuda':
+            # TODO: Let user specify which device
+            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=epochs)
+        elif self.device == 'cpu':
+            trainer = Trainer(accelerator=self.device, max_epochs=epochs)
         self.rebuild_model(round_num, input_tensor_dict)
-        # import pdb; pdb.set_trace()
 
         trainer.fit(self.model, self.data_loader.get_train_loader())
         loss = trainer.logged_metrics['train loss'].item()
@@ -145,8 +148,12 @@ class DiGress(PyTorchTaskRunner):
             torch.cuda.empty_cache()
             torch.set_float32_matmul_precision('medium')
 
-        trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1)
-        self.rebuild_model(round_num, input_tensor_dict, validation=True)
+        if self.device == 'cuda':
+            # TODO: Let user specify which device
+            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1)
+        elif self.device == 'cpu':
+            trainer = Trainer(accelerator=self.device, max_epochs=1)
+        self.rebuild_model(round_num, input_tensor_dict)
 
         # import pdb; pdb.set_trace()
         trainer.validate(self.model, self.data_loader.get_valid_loader())

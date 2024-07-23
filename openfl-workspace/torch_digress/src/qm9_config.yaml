@@ -1,6 +1,6 @@
 general:
   name: graph-tf-model
-  wandb: online
+  wandb: disabled
   gpus: 1
   resume: null
   test_only: null
