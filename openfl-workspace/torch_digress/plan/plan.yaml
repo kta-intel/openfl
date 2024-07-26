@@ -24,11 +24,14 @@ data_loader :
     collaborator_count : 2
     data_group_name    : qm9
     batch_size         : 512
-    data_config_path   : src/qm9_config.yaml
+    data_config_path   : src/digress/configs/qm9_config.yaml
 
 task_runner :
   defaults : plan/defaults/task_runner.yaml
   template : src.taskrunner.DiGress
+  settings :
+    precision : 32
+    device : cuda
 
 network :
   defaults : plan/defaults/network.yaml

@@ -18,7 +18,7 @@ from openfl.utilities.split import split_tensor_dict_for_holdouts
 from src.digress.diffusion_model_discrete import DiscreteDenoisingDiffusion
 
 class DiGress(PyTorchTaskRunner):
-    def __init__(self, device="cuda", **kwargs):
+    def __init__(self, device="cpu", precision=32, **kwargs):
         """Initialize.
 
         Args:
@@ -34,6 +34,7 @@ class DiGress(PyTorchTaskRunner):
         else:
             raise ValueError(f"Model type: <{cfg.model.type}> not currently supported")
 
+        self.precision = precision
         self.optimizer = self.model.configure_optimizers()
 
     def train_task(
@@ -60,9 +61,9 @@ class DiGress(PyTorchTaskRunner):
 
         if self.device == 'cuda':
             # TODO: Let user specify which device
-            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=epochs)
+            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=epochs, precision=self.precision)
         elif self.device == 'cpu':
-            trainer = Trainer(accelerator=self.device, max_epochs=epochs)
+            trainer = Trainer(accelerator=self.device, max_epochs=epochs, precision=self.precision)
         self.rebuild_model(round_num, input_tensor_dict)
 
         trainer.fit(self.model, self.data_loader.get_train_loader())
@@ -106,16 +107,6 @@ class DiGress(PyTorchTaskRunner):
             **next_local_tensorkey_model_dict,
         }
 
-        # Update the required tensors if they need to be pulled from the
-        # aggregator
-        # TODO this logic can break if different collaborators have different
-        # roles between rounds.
-        # For example, if a collaborator only performs validation in the first
-        # round but training in the second, it has no way of knowing the
-        # optimizer state tensor names to request from the aggregator because
-        # these are only created after training occurs. A work around could
-        # involve doing a single epoch of training on random data to get the
-        # optimizer names, and then throwing away the model.
         if self.opt_treatment == "CONTINUE_GLOBAL":
             self.initialize_tensorkeys_for_functions(with_opt_vars=True)
 
@@ -150,9 +141,10 @@ class DiGress(PyTorchTaskRunner):
 
         if self.device == 'cuda':
             # TODO: Let user specify which device
-            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1)
+            trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision)
         elif self.device == 'cpu':
-            trainer = Trainer(accelerator=self.device, max_epochs=1)
+            trainer = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision)
+
         self.rebuild_model(round_num, input_tensor_dict)
 
         # import pdb; pdb.set_trace()

@@ -39,6 +39,7 @@ class DiGressDataLoader(PyTorchDataLoader):
         self.datamodule, self.model_kwargs = load_datamodule_and_model_args(self.cfg)
 
         if self.datamodule and self.cfg.dataset.name == 'guacamol':
+            # for demo on CPU, better to use full dataset if possible
             self.datamodule = reduce_size(self.datamodule, train_size=0.10, val_size=0.10)
 
     def get_feature_shape(self):
@@ -149,6 +150,3 @@ def reduce_size(datamodule, train_size=1, val_size=1, seed=42):
 
     # Return the datamodule with the reduced datasets
     return datamodule
-
-
-

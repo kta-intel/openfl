@@ -5,7 +5,11 @@ import pandas as pd
 from torch_geometric.data import download_url, extract_zip
 import random
 from rdkit import Chem
+
 import sys
+sys.path.insert(1, os.getcwd())
+from src.digress.datasets import qm9_dataset
+
 
 DEFAULT_PATH = path.join(path.expanduser('~'), '.openfl', 'data')
 URLS =['https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/molnet_publish/qm9.zip',
@@ -125,28 +129,40 @@ def split_raw_data(root_dir, output_dir=None, num_splits=1):
         print(f"Completed split {i+1}/{num_splits}.")
 
 
-def prepare_data(split_dir):
-    check_files = [path.join(split_dir, 'train.csv'), 
-                   path.join(split_dir, 'val.csv'), 
-                   path.join(split_dir, 'test.csv')]
+def prepare_data(split_dir, pre_process=None):
+    check_files = [path.join(split_dir, 'raw', 'train.csv'), 
+                   path.join(split_dir, 'raw', 'val.csv'), 
+                   path.join(split_dir, 'raw', 'test.csv')]
 
-    if files_exist(check_files):
-        return
+    if files_exist(check_files) == False:
+        csv_path = path.join(split_dir, 'raw', 'gdb9.sdf.csv')
+        dataset = pd.read_csv(csv_path)
+
+        n_samples = len(dataset)
+        n_train = int(0.8 * n_samples)
+        n_test = int(0.1 * n_samples)
+        n_val = n_samples - (n_train + n_test)
+
+        # Shuffle dataset with df.sample, then split
+        train, val, test = np.split(dataset.sample(frac=1, random_state=42), [n_train, n_val + n_train])
+
+        train.to_csv(path.join(split_dir, 'raw', 'train.csv'))
+        val.to_csv(path.join(split_dir, 'raw', 'val.csv'))
+        test.to_csv(path.join(split_dir, 'raw', 'test.csv'))
         
-    csv_path = path.join(split_dir, 'gdb9.sdf.csv')
-    dataset = pd.read_csv(csv_path)
+    if pre_process==True:
+        # Pre-processing data would require code from the model owner, so might not be realistic to include at this stage
+        from omegaconf import OmegaConf
+        cfg = OmegaConf.load("./src/digress/configs/qm9_config.yaml")
+        cfg.dataset.datadir = split_dir
+        datamodule = qm9_dataset.QM9DataModule(cfg)
+        dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
+        train_smiles = qm9_dataset.get_train_smiles(cfg=cfg, train_dataloader=datamodule.train_dataloader(),
+                                                    dataset_infos=dataset_infos, evaluate_dataset=False)
 
-    n_samples = len(dataset)
-    n_train = int(0.8 * n_samples)
-    n_test = int(0.1 * n_samples)
-    n_val = n_samples - (n_train + n_test)
 
-    # Shuffle dataset with df.sample, then split
-    train, val, test = np.split(dataset.sample(frac=1, random_state=42), [n_train, n_val + n_train])
-
-    train.to_csv(path.join(split_dir, 'train.csv'))
-    val.to_csv(path.join(split_dir, 'val.csv'))
-    test.to_csv(path.join(split_dir, 'test.csv'))
+def str_to_bool(s):
+    return s.lower() in ['true', '1', 'y', 'yes']
 
 
 if __name__ == "__main__":
@@ -167,6 +183,4 @@ if __name__ == "__main__":
 
     # prepare data for training for each collaborator
     for i in range(collaborators):
-        prepare_data(path.join(output_dir, f'split_{i+1}', 'raw'))
-
-
+        prepare_data(path.join(output_dir, f'split_{i+1}'), pre_process=str_to_bool(sys.argv[2]))

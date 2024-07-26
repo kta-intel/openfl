@@ -332,9 +332,9 @@ def mask_distributions(true_X, true_E, pred_X, pred_E, node_mask):
     :return: same sizes as input
     """
 
-    row_X = torch.zeros(true_X.size(-1), dtype=torch.float, device=true_X.device)
+    row_X = torch.zeros(true_X.size(-1), dtype=true_X.dtype, device=true_X.device)
     row_X[0] = 1.
-    row_E = torch.zeros(true_E.size(-1), dtype=torch.float, device=true_E.device)
+    row_E = torch.zeros(true_E.size(-1), dtype=true_E.dtype, device=true_E.device)
     row_E[0] = 1.
 
     diag_mask = ~torch.eye(node_mask.size(1), device=node_mask.device, dtype=torch.bool).unsqueeze(0)
@@ -392,5 +392,3 @@ def sample_discrete_feature_noise(limit_dist, node_mask):
     assert (U_E == torch.transpose(U_E, 1, 2)).all()
 
     return PlaceHolder(X=U_X, E=U_E, y=U_y).mask(node_mask)
-
-
