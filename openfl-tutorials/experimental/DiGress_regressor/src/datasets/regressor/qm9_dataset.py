@@ -244,10 +244,12 @@ class QM9DataModule(MolecularDataModule):
                     datasets = {'train': datasets['train'][:len(datasets['train'])//2],
                                 'val': datasets['val'][:len(datasets['val'])//2],
                                 'test': datasets['test']}
+                    print("Dataset length is", len(datasets['train']))
                 elif self.shard == 2:
                     datasets = {'train': datasets['train'][len(datasets['train'])//2:],
                                 'val': datasets['val'][len(datasets['val'])//2:],
                                 'test': datasets['test']}
+                    print("Dataset length is", len(datasets['train']))
                 
                 else:
                     print(f"Max. collabs = 2")
