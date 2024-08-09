@@ -185,8 +185,8 @@ class DiGress(PyTorchTaskRunner):
             if self.regressor:
                 trainer_regressor = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
                                             enable_checkpointing=False, logger=False)
-                trainer_guidance = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision,
-                                        enable_checkpointing=False, logger=False)
+                trainer_guidance = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
+                                           enable_checkpointing=False, logger=False)
 
         self.rebuild_model(round_num, input_tensor_dict)
 

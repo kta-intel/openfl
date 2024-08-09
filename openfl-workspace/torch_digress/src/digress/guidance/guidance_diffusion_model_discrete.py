@@ -9,6 +9,7 @@ import time
 import os
 import torch.nn as nn
 import torch.nn.functional as F
+import tqdm
 from omegaconf import OmegaConf, open_dict
 
 from src.digress.models.transformer_model import GraphTransformer
@@ -304,7 +305,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         chain_E = torch.zeros(chain_E_size)
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-        for s_int in reversed(range(0, self.T)):
+        for s_int in tqdm.tqdm(reversed(range(0, self.T)), desc="Generating samples", total=self.T):
             s_array = s_int * torch.ones((batch_size, 1)).type_as(y)
             t_array = s_array + 1
             t_norm = t_array / self.T
