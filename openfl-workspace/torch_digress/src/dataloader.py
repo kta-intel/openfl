@@ -96,9 +96,6 @@ def load_datamodule_and_model_args(cfg, regressor: bool = False):
         else:
             datamodule = qm9_dataset.QM9DataModule(cfg=cfg, regressor=regressor)
             dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
-            # if regressor:
-            #     train_smiles = None
-            # else:
             train_smiles = qm9_dataset.get_train_smiles(cfg=cfg, train_dataloader=datamodule.train_dataloader(),
                                                         dataset_infos=dataset_infos, evaluate_dataset=False)
     else:

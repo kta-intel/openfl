@@ -20,7 +20,7 @@ from src.digress.guidance.qm9_regressor_discrete import Qm9RegressorDiscrete
 from src.digress.guidance.guidance_diffusion_model_discrete import DiscreteDenoisingDiffusion as DiscreteDenoisingDiffusionGuidance
 
 class DiGress(PyTorchTaskRunner):
-    def __init__(self, device="cpu", precision=32, **kwargs):
+    def __init__(self, device="cpu", precision=32, regressor_path=None, **kwargs):
         """Initialize.
 
         Args:
@@ -36,14 +36,15 @@ class DiGress(PyTorchTaskRunner):
             self.diffusion_model = DiscreteDenoisingDiffusion(cfg=self.data_loader.cfg, **self.data_loader.model_kwargs)
             self.optimizer = self.diffusion_model.configure_optimizers()
 
-            if self.data_loader.model_kwargs_r:
+            if hasattr(self.data_loader, 'model_kwargs_r') and self.data_loader.model_kwargs_r is not None:
                 self.regressor = Qm9RegressorDiscrete(cfg=self.data_loader.cfg, **self.data_loader.model_kwargs_r)
-                self.optimizer_r = self.regressor.configure_optimizers()
+                self.optimizer_r = self.regressor.configure_optimizers()['optimizer']
                 self.conditional_model = DiscreteDenoisingDiffusionGuidance(cfg=self.data_loader.cfg, **self.data_loader.model_kwargs)
         else:
             raise ValueError(f"Model type: <{cfg.model.type}> not currently supported")
 
         self.precision = precision
+        self.regressor_path = regressor_path
 
     def train_task(
         self, col_name, round_num, input_tensor_dict, epochs=1, **kwargs
@@ -71,13 +72,13 @@ class DiGress(PyTorchTaskRunner):
             # TODO: Let user specify which device
             trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision, 
                               enable_checkpointing=False, logger=False)
-            if self.regressor:
+            if hasattr(self, 'regressor') and self.regressor is not None and self.regressor_path is None:
                 trainer_regressor = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision,
                                             enable_checkpointing=False, logger=False)
         elif self.device == 'cpu':
             trainer = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
                               enable_checkpointing=False, logger=False)
-            if self.regressor:
+            if hasattr(self, 'regressor') and self.regressor is not None and self.regressor_path is None:
                 trainer_regressor = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
                                             enable_checkpointing=False, logger=False)
 
@@ -93,7 +94,7 @@ class DiGress(PyTorchTaskRunner):
         origin = col_name
         tags = ("trained",)
 
-        if self.regressor:
+        if hasattr(self, 'regressor') and self.regressor is not None and self.regressor_path is None:
             trainer_regressor.fit(self.regressor, self.data_loader.get_train_loader(regressor=True))
             loss_regressor = trainer_regressor.logged_metrics['train loss'].item()
 
@@ -174,19 +175,21 @@ class DiGress(PyTorchTaskRunner):
             # TODO: Let user specify which device
             trainer = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision, 
                               enable_checkpointing=False, logger=False)
-            if self.regressor:
-                trainer_regressor = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision,
-                                            enable_checkpointing=False, logger=False)
+            if hasattr(self, 'regressor') and self.regressor is not None:
                 trainer_guidance = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision,
                                         enable_checkpointing=False, logger=False)
+                if self.regressor_path is None:
+                    trainer_regressor = Trainer(accelerator=self.device, devices=[0], max_epochs=1, precision=self.precision,
+                                            enable_checkpointing=False, logger=False)
         elif self.device == 'cpu':
             trainer = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
                               enable_checkpointing=False, logger=False)
-            if self.regressor:
-                trainer_regressor = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
-                                            enable_checkpointing=False, logger=False)
+            if hasattr(self, 'regressor') and self.regressor is not None:
                 trainer_guidance = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
-                                           enable_checkpointing=False, logger=False)
+                                            enable_checkpointing=False, logger=False)
+                if self.regressor_path is None:
+                    trainer_regressor = Trainer(accelerator=self.device, max_epochs=1, precision=self.precision, 
+                                            enable_checkpointing=False, logger=False)
 
         self.rebuild_model(round_num, input_tensor_dict)
 
@@ -203,27 +206,46 @@ class DiGress(PyTorchTaskRunner):
         tags = ("metric",)
         tags = change_tags(tags, add_field=suffix)
 
-        if self.regressor:
-            trainer_regressor.validate(self.regressor, self.data_loader.get_valid_loader(regressor=True))
-            metric2 = Metric(name='Val MAE (regressor)', 
-                            value=np.array(trainer_regressor.logged_metrics['val_mae'].item()))
+        if hasattr(self, 'regressor') and self.regressor is not None:
+            if self.regressor_path is None:
+                trainer_regressor.validate(self.regressor, self.data_loader.get_valid_loader(regressor=True))
+                metric2 = Metric(name='Val MAE (regressor)', 
+                                value=np.array(trainer_regressor.logged_metrics['val_mae'].item()))
 
-            self.conditional_model.load_state_dict(self.diffusion_model.state_dict(), strict=False)
-            self.conditional_model.guidance_model = self.regressor
+                self.conditional_model.load_state_dict(self.diffusion_model.state_dict(), strict=False)
+                self.conditional_model.guidance_model = self.regressor
 
-            trainer_guidance.validate(self.conditional_model, self.data_loader.get_valid_loader(regressor=True))
+                trainer_guidance.validate(self.conditional_model, self.data_loader.get_valid_loader(regressor=True))
 
-            metric3 = Metric(name='Validity',
-                             value=np.array(trainer_guidance.logged_metrics['Validity'].item()))
-            metric4 = Metric(name='Uniqueness', 
-                             value=np.array(trainer_guidance.logged_metrics['Uniqueness'].item()))
+                metric3 = Metric(name='Validity',
+                                value=np.array(trainer_guidance.logged_metrics['Validity'].item()))
+                metric4 = Metric(name='Uniqueness', 
+                                value=np.array(trainer_guidance.logged_metrics['Uniqueness'].item()))
 
-            output_tensor_dict = {
-                TensorKey(metric1.name, origin, round_num, True, tags): metric1.value,
-                TensorKey(metric2.name, origin, round_num, True, tags): metric2.value,
-                TensorKey(metric3.name, origin, round_num, True, tags): metric3.value,
-                TensorKey(metric4.name, origin, round_num, True, tags): metric4.value
-            }
+                output_tensor_dict = {
+                    TensorKey(metric1.name, origin, round_num, True, tags): metric1.value,
+                    TensorKey(metric2.name, origin, round_num, True, tags): metric2.value,
+                    TensorKey(metric3.name, origin, round_num, True, tags): metric3.value,
+                    TensorKey(metric4.name, origin, round_num, True, tags): metric4.value
+                }
+            else:
+                self.conditional_model.load_state_dict(self.diffusion_model.state_dict(), strict=False)
+                checkpoint = torch.load(self.regressor_path)
+                self.regressor.load_state_dict(checkpoint['model_state_dict'])
+                self.conditional_model.guidance_model = self.regressor
+
+                trainer_guidance.validate(self.conditional_model, self.data_loader.get_valid_loader(regressor=True))
+
+                metric3 = Metric(name='Validity',
+                                value=np.array(trainer_guidance.logged_metrics['Validity'].item()))
+                metric4 = Metric(name='Uniqueness', 
+                                value=np.array(trainer_guidance.logged_metrics['Uniqueness'].item()))
+
+                output_tensor_dict = {
+                    TensorKey(metric1.name, origin, round_num, True, tags): metric1.value,
+                    TensorKey(metric3.name, origin, round_num, True, tags): metric3.value,
+                    TensorKey(metric4.name, origin, round_num, True, tags): metric4.value
+                }
         else:
             metric2 = Metric(name='Validity',
                             value=np.array(trainer.logged_metrics['Validity'].item()))
@@ -263,6 +285,13 @@ class DiGress(PyTorchTaskRunner):
         Returns:
             None
         """
+        filename_stem = filepath.stem
+        filename_suffix = filepath.suffix
+
+        # Create new file paths with the desired suffixes appended to the stem
+        diffusion_filepath = filepath.with_name(f"{filename_stem}_diffusion{filename_suffix}")
+        regressor_filepath = filepath.with_name(f"{filename_stem}_regressor{filename_suffix}")
+
         pickle_dict_diffusion = {
             model_state_dict_key: self.diffusion_model.state_dict(),
             optimizer_state_dict_key: self.optimizer.state_dict(),
@@ -271,8 +300,8 @@ class DiGress(PyTorchTaskRunner):
             model_state_dict_key: self.regressor.state_dict(),
             optimizer_state_dict_key: self.optimizer_r.state_dict(),
         }
-        torch.save(pickle_dict_diffusion, "diffusion_model_" + filepath)
-        torch.save(pickle_dict_regressor, "regressor_" + filepath)
+        torch.save(pickle_dict_diffusion, diffusion_filepath)
+        torch.save(pickle_dict_regressor, regressor_filepath)
 
     def set_tensor_dict(self, tensor_dict, with_opt_vars=False):
         """Set the tensor dictionary.

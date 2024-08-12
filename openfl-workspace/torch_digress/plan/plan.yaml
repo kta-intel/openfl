@@ -8,7 +8,7 @@ aggregator :
     init_state_path     : save/init.pbuf
     best_state_path     : save/best.pbuf
     last_state_path     : save/last.pbuf
-    rounds_to_train     : 10
+    rounds_to_train     : 2
     write_logs: false
 
 collaborator :
@@ -33,6 +33,7 @@ task_runner :
   settings :
     precision : 32
     device : cuda
+    regressor_path: null
 
 network:
   defaults: plan/defaults/network.yaml
