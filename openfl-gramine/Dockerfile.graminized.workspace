@@ -3,7 +3,11 @@ FROM ${BASE_IMAGE} as builder
 
 ARG WORKSPACE_ARCHIVE
 COPY ${WORKSPACE_ARCHIVE} /workspace.zip
-RUN --mount=type=cache,target=/root/.cache/ \
+
+# Switch to the non-root user
+USER openfl
+
+RUN --mount=type=cache,target=/home/openfl/.cache/ \
     fx workspace import --archive /workspace.zip
 
 WORKDIR /workspace
@@ -15,8 +19,8 @@ RUN cp /usr/local/lib/python3.8/site-packages/openfl-gramine/openfl.manifest.tem
 
 ARG SGX_BUILD=1
 ARG SGX_ENCLAVE_SIZE=16G
-RUN --mount=type=secret,id=signer-key,dst=/key.pem \
-    make clean && make SGX=${SGX_BUILD} SGX_ENCLAVE_SIZE=${SGX_ENCLAVE_SIZE} SGX_SIGNER_KEY=/key.pem
+RUN --mount=type=secret,id=signer-key,dst=/home/openfl/key.pem \
+    make clean && make SGX=${SGX_BUILD} SGX_ENCLAVE_SIZE=${SGX_ENCLAVE_SIZE} SGX_SIGNER_KEY=/home/openfl/key.pem
 
 ENV GRAMINE_EXECUTABLE=gramine-sgx
 ENTRYPOINT ["/bin/bash", "start_process.sh"]

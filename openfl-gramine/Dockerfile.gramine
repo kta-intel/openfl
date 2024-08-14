@@ -3,6 +3,10 @@ FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Create an unprivileged user.
+RUN groupadd -g 1001 default && \
+    useradd -m -u 1001 -g default openfl
+
 RUN --mount=type=cache,target=/root/.cache/ \
     pip install --upgrade pip setuptools wheel && \
     pip install openfl
@@ -20,6 +24,11 @@ RUN --mount=type=cache,id=apt-dev,target=/var/cache/apt \
 
 # graminelibos is under this dir
 ENV PYTHONPATH=/usr/local/lib/python3.8/site-packages/:/usr/lib/python3/dist-packages/:
+
+# Switch to the non-root user
+USER openfl
+WORKDIR /home/openfl
+ENV PATH=/home/openfl/.local/bin:$PATH
 
 # install linux headers
 # WORKDIR /tmp/
