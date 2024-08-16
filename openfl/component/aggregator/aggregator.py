@@ -67,6 +67,8 @@ class Aggregator:
         best_state_path,
         last_state_path,
         assigner,
+        save_criteria='loss',
+        save_metric=None,
         straggler_handling_policy=None,
         rounds_to_train=256,
         single_col_cert_common_name=None,
@@ -89,6 +91,8 @@ class Aggregator:
             last_state_path (str): The file location to store the latest
                 weight.
             assigner: Assigner object.
+            save_criteria (str, optional): Criteria for saving the best model (loss/accuracy). Defaults to 'loss'.
+            save_metric (str, optional): Name of the metric. Defaults to None.
             straggler_handling_policy (optional): Straggler handling policy.
                 Defaults to CutoffTimeBasedStragglerHandling.
             rounds_to_train (int, optional): Number of rounds to train.
@@ -158,6 +162,8 @@ class Aggregator:
 
         self.best_tensor_dict: dict = {}
         self.last_tensor_dict: dict = {}
+        self.save_criteria = save_criteria
+        self.save_metric = save_metric
 
         if kwargs.get("initial_tensor_dict", None) is not None:
             self._load_initial_tensors_from_dict(kwargs["initial_tensor_dict"])
@@ -864,6 +870,14 @@ class Aggregator:
         task_agg_function = self.assigner.get_aggregation_type_for_task(task_name)
         task_key = TaskResultKey(task_name, collaborators_for_task[0], self.round_number)
 
+        if task_name == 'aggregated_model_validation':
+            if (self.save_metric is None or 
+                any(tensor_key.tensor_name == self.save_metric 
+                    for tensor_key in self.collaborator_tasks_results[task_key])):
+                pass  
+            else:
+                raise ValueError(f"{self.save_metric} is not being calculated in the validation task.")
+
         for tensor_key in self.collaborator_tasks_results[task_key]:
             tensor_name, origin, round_number, report, tags = tensor_key
             assert (
@@ -895,14 +909,27 @@ class Aggregator:
 
                 # FIXME: Configurable logic for min/max criteria in saving best.
                 if "validate_agg" in tags:
-                    # Compare the accuracy of the model, potentially save it
-                    if self.best_model_score is None or self.best_model_score < agg_results:
-                        self.logger.metric(
-                            f"Round {round_number}: saved the best "
-                            f"model with score {agg_results:f}"
-                        )
-                        self.best_model_score = agg_results
-                        self._save_model(round_number, self.best_state_path)
+                    if self.save_metric is None or self.save_metric == tensor_key.tensor_name:
+                        # Compare the accuracy of the model, potentially save it
+                        if self.save_criteria == "accuracy":
+                            if self.best_model_score is None or self.best_model_score < agg_results:
+                                self.logger.metric(
+                                    f"Round {round_number}: saved the best "
+                                    f"model with {tensor_key.tensor_name} : {agg_results:f}"
+                                )
+                                self.best_model_score = agg_results
+                                self._save_model(round_number, self.best_state_path)
+                        elif self.save_criteria == "loss":
+                            if self.best_model_score is None or agg_results < self.best_model_score:
+                                self.logger.metric(
+                                    f"Round {round_number}: saved the best "
+                                    f"model with {tensor_key.tensor_name} : {agg_results:f}"
+                                )
+                                self.best_model_score = agg_results
+                                self._save_model(round_number, self.best_state_path)
+                        else:
+                            raise ValueError(f"Invalid save criteria: {self.save_criteria}. Please select 'accuracy' or 'loss'.")
+
             if "trained" in tags:
                 self._prepare_trained(tensor_name, origin, round_number, report, agg_results)
 
