@@ -100,6 +100,10 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                                       act_fn_in=nn.ReLU(),
                                       act_fn_out=nn.ReLU())
 
+        if getattr(self.cfg.model, 'torch_compile', False):
+            print("Compiling the model...")
+            self.model = torch.compile(self.model)
+
         self.noise_schedule = PredefinedNoiseScheduleDiscrete(cfg.model.diffusion_noise_schedule,
                                                               timesteps=cfg.model.diffusion_steps)
         # Marginal noise schedule

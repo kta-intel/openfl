@@ -18,6 +18,16 @@ from src.digress.metrics.molecular_metrics_discrete import TrainMolecularMetrics
 logger = getLogger(__name__)
 
 
+def check_guidance_enabled(func):
+    """Decorator to ensure guidance is enabled when regressor is True."""
+    def check_guidance_and_call(self, *args, **kwargs):
+        regressor = kwargs.get('regressor', False)
+        if regressor and not getattr(getattr(self.cfg, 'guidance', None), 'use_guidance', False):
+            raise RuntimeError("Guidance is not enabled. Regressor was not initialized")
+        return func(self, *args, **kwargs)
+    return check_guidance_and_call
+
+
 class DiGressDataLoader(PyTorchDataLoader):
     """PyTorch data loader for MNIST dataset."""
 
@@ -39,41 +49,46 @@ class DiGressDataLoader(PyTorchDataLoader):
         # Diffusion:
         self.datamodule, self.model_kwargs = load_datamodule_and_model_args(self.cfg)
         # Regressor:
-        if self.cfg.guidance.use_guidance==True:
+        if getattr(getattr(self.cfg, 'guidance', None), 'use_guidance', False):
             self.datamodule_r, self.model_kwargs_r = load_datamodule_and_model_args(self.cfg, 
                                                                                     regressor=True)
-                                                                                    
+
+    @check_guidance_enabled                                                                         
     def get_feature_shape(self, regressor=False):
         """Return input dims."""
-        if regressor==True:
+        if regressor:
             return self.model_kwargs_r['dataset_infos'].input_dims
         else:
             return self.model_kwargs['dataset_infos'].input_dims
 
+    @check_guidance_enabled                                                                         
     def get_train_loader(self, regressor=False):
         """Return train dataloader."""
-        if regressor==True:
+        if regressor:
             return self.datamodule_r.train_dataloader()
         else:
             return self.datamodule.train_dataloader()
 
+    @check_guidance_enabled                                                                         
     def get_train_data_size(self, regressor=False):
         """Return size of train dataset."""
-        if regressor==True:
+        if regressor:
             return len(self.datamodule_r.train_dataset)
         else:
             return len(self.datamodule.train_dataset)
 
+    @check_guidance_enabled                                                                         
     def get_valid_loader(self, regressor=False):
         """Return validation dataloader."""
-        if regressor==True:
+        if regressor:
             return self.datamodule_r.val_dataloader()
         else:
             return self.datamodule.val_dataloader()
 
+    @check_guidance_enabled                                                                         
     def get_valid_data_size(self, regressor=False):
         """Return size of validation dataset."""
-        if regressor==True:
+        if regressor:
             return len(self.datamodule_r.val_dataset)
         else:
             return len(self.datamodule.val_dataset)
@@ -130,6 +145,3 @@ def load_datamodule_and_model_args(cfg, regressor: bool = False):
                     'extra_features': extra_features, 'domain_features': domain_features}
 
     return datamodule, model_kwargs
-
-
-

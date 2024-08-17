@@ -1,5 +1,5 @@
-# # Copyright (c) 2012-2022 Clement Vignac, Igor Krawczuk, Antoine Siraudin
-# # source: https://github.com/cvignac/DiGress/
+# Copyright (c) 2012-2022 Clement Vignac, Igor Krawczuk, Antoine Siraudin
+# source: https://github.com/cvignac/DiGress/
 
 from src.digress.diffusion.distributions import DistributionNodes
 import src.digress.utils as utils
@@ -103,6 +103,21 @@ class AbstractDatasetInfos:
         self.nodes_dist = DistributionNodes(n_nodes)
 
     def compute_input_output_dims(self, datamodule=None, extra_features=None, domain_features=None, cfg=None, regressor=False):
+        """
+        Compute the input and output dimensions for the model.
+        If a datamodule is provided, the function will compute the dimensions based onthe data.
+        If no datamodule is provided, the function will use the provided cfg to set the dimensions.
+
+        Args:
+            datamodule: An instance that provides access to the data loaders. [optional] 
+            extra_features: A callable that computes additional features for the input data. [optional] 
+            domain_features: A callable that computes domain-specific features for the input data. [optional] 
+            cfg: A configuration object that contains model information [optional]
+            regressor: A boolean flag indicating whether a regressor is being used (default False).
+
+        Returns:
+            None: Set the input_dims and output_dims attributes of the instance.
+        """
         if datamodule:
             example_batch = next(iter(datamodule.train_dataloader()))
             ex_dense, node_mask = utils.to_dense(example_batch.x, example_batch.edge_index, example_batch.edge_attr,

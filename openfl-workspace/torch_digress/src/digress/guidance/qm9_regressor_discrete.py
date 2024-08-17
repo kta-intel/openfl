@@ -26,6 +26,8 @@ class Qm9RegressorDiscrete(pl.LightningModule):
                  domain_features):
         super().__init__()
 
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
         input_dims = dataset_infos.input_dims
         output_dims = dataset_infos.output_dims
         nodes_dist = dataset_infos.nodes_dist
@@ -78,7 +80,7 @@ class Qm9RegressorDiscrete(pl.LightningModule):
                                       act_fn_in=nn.ReLU(),
                                       act_fn_out=nn.ReLU())
 
-        if self.args.model.torch_compile == True:
+        if getattr(self.args.model, 'torch_compile', False):
             print("Compiling the model...")
             self.model = torch.compile(self.model)
 
@@ -113,10 +115,8 @@ class Qm9RegressorDiscrete(pl.LightningModule):
         self.test_loss = MeanAbsoluteError()
         self.best_val_mae = 1e8
 
-        self.val_loss_each = [MeanAbsoluteError().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')) for i
-                              in range(2)]
-        self.test_loss_each = [MeanAbsoluteError().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')) for
-                               i in range(2)]
+        self.val_loss_each = [MeanAbsoluteError().to(device) for i in range(2)]
+        self.test_loss_each = [MeanAbsoluteError().to(device) for i in range(2)]
         self.target_dict = {0: "mu", 1: "homo"}
 
     def training_step(self, data, i):

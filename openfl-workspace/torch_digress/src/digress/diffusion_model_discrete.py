@@ -72,7 +72,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                                       act_fn_in=nn.ReLU(),
                                       act_fn_out=nn.ReLU())
 
-        if self.cfg.model.torch_compile == True:
+        if getattr(self.cfg.model, 'torch_compile', False):
             print("Compiling the model...")
             self.model = torch.compile(self.model)
 
@@ -98,6 +98,8 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                                                               y_classes=self.ydim_output)
             self.limit_dist = utils.PlaceHolder(X=x_marginals, E=e_marginals,
                                                 y=torch.ones(self.ydim_output) / self.ydim_output)
+        else:
+            raise ValueError(f"Invalid transition type: {self.cfg.model.transition}. Expected 'uniform' or 'marginal'.")
 
         self.save_hyperparameters(ignore=['train_metrics', 'sampling_metrics'])
         self.start_epoch_time = None
@@ -199,7 +201,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         self.print('Val loss: %.4f \t Best val loss:  %.4f\n' % (val_nll, self.best_val_nll))
 
         self.val_counter += 1
-        if self.cfg.guidance.use_guidance == True: 
+        if getattr(getattr(self.cfg, 'guidance', None), 'use_guidance', False):
             self.log_dict({'val_nll': val_nll})
         else:
             # Do not perform sampling using just the diffusion model if guidance is used

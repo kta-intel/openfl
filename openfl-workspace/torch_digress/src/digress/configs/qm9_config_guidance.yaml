@@ -22,7 +22,7 @@ model:
   hidden_mlp_dims:
     X: 256
     E: 128
-    'y': 128
+    y: 128
   hidden_dims:
     dx: 256
     de: 64
