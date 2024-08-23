@@ -153,7 +153,7 @@ setup(
         'docker',
         'dynaconf==3.2.6',
         'flatten_json',
-        'grpcio>=1.56.2',
+        'grpcio>=1.56.2,<1.66.0',
         'ipykernel',
         'jupyterlab',
         'numpy',
@@ -167,7 +167,7 @@ setup(
         'tensorboardX>=2.6',
         'tqdm',
     ],
-    setup_requires=['grpcio-tools>=1.56.2,<1.67.0'],
+    setup_requires=['grpcio-tools>=1.56.2,<1.66.0'],
     python_requires='>=3.8, <3.12',
     project_urls={
         'Bug Tracker': 'https://github.com/securefederatedai/openfl/issues',
