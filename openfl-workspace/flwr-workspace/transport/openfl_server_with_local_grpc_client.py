@@ -4,21 +4,20 @@ from flwr.proto import grpcadapter_pb2_grpc
 from openfl.proto import openfl_pb2_grpc, openfl_pb2
 from message_conversion import flower_to_openfl_message, openfl_to_flower_message
 
-class LocalGRPCClient(grpcadapter_pb2_grpc.GrpcAdapterServicer):
+class LocalGRPCClient:
     def __init__(self, superlink_address):
-        self.superlink_address = superlink_address
         self.superlink_channel = grpc.insecure_channel(superlink_address)
         self.superlink_stub = grpcadapter_pb2_grpc.GrpcAdapterStub(self.superlink_channel)
 
-    def SendReceive(self, request, context):
-        # Convert Flower message to OpenFL message
-        openfl_message = flower_to_openfl_message(request)
-        # Forward the OpenFL message to the Flower superlink
-        print(f"Received message from OpenFL server: {openfl_message.message_type}")
-        flower_response = self.superlink_stub.SendReceive(request)
+    def send_receive(self, openfl_message):
+        # Convert OpenFL message to Flower message
+        flower_message = openfl_to_flower_message(openfl_message)
+        # print(f"Sending message to Flower server: {flower_message.grpc_message_name}")
+        # Send the Flower message to the Flower server and get a response
+        flower_response = self.superlink_stub.SendReceive(flower_message)
+        # print(f"Received response from Flower server: {flower_response.grpc_message_name}")
         # Convert Flower response to OpenFL response
         openfl_response = flower_to_openfl_message(flower_response)
-        print(f"Received response from Flower superlink: {openfl_response.message_type}")
         return openfl_response
 
 class OpenFLServer(openfl_pb2_grpc.FederatedServiceServicer):
@@ -27,12 +26,9 @@ class OpenFLServer(openfl_pb2_grpc.FederatedServiceServicer):
 
     def Exchange(self, request, context):
         # Forward the incoming OpenFL message to the local gRPC client
-        print(f"Received message from OpenFL client: {request.message_type}")
-        flower_message = openfl_to_flower_message(request)
-        flower_response = self.local_grpc_client.SendReceive(flower_message, context)
-        # Convert the Flower response back to an OpenFL message
-        openfl_response = flower_to_openfl_message(flower_response)
-        print(f"Received response from local gRPC client: {openfl_response.message_type}")
+        print(f"Received message from OpenFL client, sending message to Flower server: {request.message_type}")
+        openfl_response = self.local_grpc_client.send_receive(request)
+        print(f"Received message from Flower server, sending response back to OpenFL client: {openfl_response.message_type}")
         return openfl_response
 
 def serve(superlink_address, openfl_server_port):
