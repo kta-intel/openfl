@@ -80,8 +80,8 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='openfl',
-    version='1.5',
-    author='Intel Corporation',
+    version='1.6',
+    author='The OpenFL Team',
     description='Federated Learning for the Edge',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -158,9 +158,9 @@ setup(
         'jupyterlab',
         'numpy',
         'pandas',
-        'protobuf>=3.20.3',
-        'pyzmq<=26.1.1',
-        'requests',
+        'protobuf>=4.22,<5.0.0dev',
+        'pyzmq<=26.2.0',
+        'requests>=2.32.0',
         'rich',
         'scikit-learn',
         'tensorboard',
