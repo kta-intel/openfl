@@ -10,6 +10,12 @@ This rudimentary integration is a proof-of-concept test to explore communication
 
 ## Setup Instructions
 
+Create proto:
+```bash
+cd openfl/proto
+python -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. openfl.proto
+```
+
 To set up the integration, follow these steps:
 
 1. Open 6 terminals on your machine to run the different components of the system.
