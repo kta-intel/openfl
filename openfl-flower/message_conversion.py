@@ -1,5 +1,6 @@
 from flwr.proto import grpcadapter_pb2
 from openfl.proto import openfl_pb2
+from deserialize_message import deserialize_flower_message
 
 def flower_to_openfl_message(flower_message):
     """Convert a Flower MessageContainer to an OpenFL OpenFLMessage."""
