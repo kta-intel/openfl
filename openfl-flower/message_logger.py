@@ -1,74 +1,109 @@
-# # message_logger.py
-
 # import logging
-# from google.protobuf.json_format import MessageToJson
+# from deserialize_message import deserialize_flower_message
 
-# # Import the protobuf classes for deserialization
-# from flwr.proto import fleet_pb2, run_pb2
-# # Add other necessary imports for protobuf classes
+# # Configure logging
+# logging.basicConfig(filename='flower_messages.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
-# def get_message_class_by_name(message_name):
-#     message_classes = {
-#         "CreateNodeRequest": fleet_pb2.CreateNodeRequest,
-#         "CreateNodeResponse": fleet_pb2.CreateNodeResponse,
-#         "PingRequest": fleet_pb2.PingRequest,
-#         "PingResponse": fleet_pb2.PingResponse,
-#         "PullTaskInsRequest": fleet_pb2.PullTaskInsRequest,
-#         "PullTaskInsResponse": fleet_pb2.PullTaskInsResponse,
-#         "PushTaskResRequest": fleet_pb2.PushTaskResRequest,
-#         "PushTaskResResponse": fleet_pb2.PushTaskResResponse,
-#         "GetRunRequest": run_pb2.GetRunRequest,
-#         "GetRunResponse": run_pb2.GetRunResponse,
-#         # Add other message mappings here
-#     }
-#     return message_classes.get(message_name)
+# def log_flower_message(flower_message, message_type):
+#     """
+#     Log a Flower message or response with deserialized content.
 
-# class MessageLogger:
-#     def __init__(self, log_file):
-#         self.log_file = log_file
-#         logging.basicConfig(filename=self.log_file, level=logging.INFO, 
-#                             format='%(asctime)s - %(levelname)s - %(message)s')
+#     Args:
+#         flower_message: The Flower message or response to be logged.
+#         message_type: A string indicating the type of message ('sent' or 'received').
+#     """
+#     # Deserialize the grpc_message_content
+#     deserialized_content = deserialize_flower_message(flower_message)
 
-#     def log_message(self, message_name, message_content, direction, headers=None):
-#         message_class = get_message_class_by_name(message_name)
-#         if message_class:
-#             message = message_class()
-#             message.ParseFromString(message_content)
-#             message_dict = {
-#                 "message_type": message_name,
-#                 "payload": MessageToJson(message),  # Serialize the message content to JSON
-#                 "headers": headers or {}
-#             }
-#             # If the message has a 'metadata' field, we assume it's a Flower message
-#             if hasattr(message, 'metadata'):
-#                 message_dict = {
-#                     "metadata": {md.key: md.value for md in message.metadata},
-#                     "grpc_message_name": message_name,
-#                     "grpc_message_content": MessageToJson(message)  # Serialize the message content to JSON
-#                 }
-#             logging.info(f"{direction} - {message_name}: {message_dict}")
-#         else:
-#             logging.warning(f"Unknown message name: {message_name}")
+#     # Prepare the log entry
+#     message_str = f"Flower message {message_type}:\n{flower_message}"
+#     if deserialized_content is not None:
+#         message_str += f"\nDeserialized content:\n{deserialized_content}"
+#     else:
+#         message_str += "\nDeserialization failed"
+
+#     # Add separator
+#     message_str += f"\n{'=' * 40}\n"
+
+#     # Log the message with deserialized content and separator
+#     logging.info(message_str)
+
+# # This function can be used to log messages from other parts of your application
+# def log_message(flower_message, message_type):
+#     """
+#     Public function to log a Flower message or response.
+
+#     Args:
+#         flower_message: The Flower message or response to be logged.
+#         message_type: A string indicating the type of message ('sent' or 'received').
+#     """
+#     log_flower_message(flower_message, message_type)
 
 import logging
-import base64
+import os
+from deserialize_message import deserialize_flower_message
 
-class MessageLogger:
-    def __init__(self, log_file):
-        self.log_file = log_file
-        # Configure logging to write to the specified log file
-        logging.basicConfig(filename=self.log_file, level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s')
+def get_logger(client_id):
+    """
+    Get a logger for a specific client ID.
 
-    def log_message(self, message, direction):
-        # Log the message with the specified direction
-        logging.info(f"{direction} - {message}")
+    Args:
+        client_id: A unique identifier for the client.
 
-    def log_binary_message(self, metadata, grpc_message_module, grpc_message_qualname, grpc_message_content, direction):
-        # Encode the binary content in Base64
-        encoded_content = base64.b64encode(grpc_message_content).decode('utf-8')
-        # Log the message with metadata and encoded content
-        logging.info(f"{direction} - metadata: {metadata} "
-                     f"grpc_message_module: \"{grpc_message_module}\" "
-                     f"grpc_message_qualname: \"{grpc_message_qualname}\" "
-                     f"grpc_message_content (Base64): \"{encoded_content}\"")
+    Returns:
+        A logging.Logger instance for the client.
+    """
+    # Create a directory for client logs if it doesn't exist
+    log_dir = 'client_logs'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # Configure logging for the client
+    log_filename = os.path.join(log_dir, f'flower_messages_{client_id}.log')
+    logger = logging.getLogger(f'client_{client_id}')
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        # Add a file handler if it doesn't already exist
+        file_handler = logging.FileHandler(log_filename)
+        formatter = logging.Formatter('%(asctime)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    return logger
+
+def log_flower_message(flower_message, message_type, client_id):
+    """
+    Log a Flower message or response with deserialized content for a specific client.
+
+    Args:
+        flower_message: The Flower message or response to be logged.
+        message_type: A string indicating the type of message ('sent' or 'received').
+        client_id: A unique identifier for the client.
+    """
+    # Deserialize the grpc_message_content
+    deserialized_content = deserialize_flower_message(flower_message)
+
+    # Prepare the log entry
+    message_str = f"Flower message {message_type}:\n{flower_message}"
+    if deserialized_content is not None:
+        message_str += f"\nDeserialized content:\n{deserialized_content}"
+    else:
+        message_str += "\nDeserialization failed"
+
+    # Add separator
+    message_str += f"\n{'=' * 40}\n"
+
+    # Get the logger for the client and log the message with deserialized content and separator
+    logger = get_logger(client_id)
+    logger.info(message_str)
+
+# This function can be used to log messages from other parts of your application
+def log_message(flower_message, message_type, client_id):
+    """
+    Public function to log a Flower message or response for a specific client.
+
+    Args:
+        flower_message: The Flower message or response to be logged.
+        message_type: A string indicating the type of message ('sent' or 'received').
+        client_id: A unique identifier for the client.
+    """
+    log_flower_message(flower_message, message_type, client_id)

@@ -4,9 +4,6 @@ from flwr.proto import grpcadapter_pb2_grpc
 from openfl.proto import openfl_pb2_grpc, openfl_pb2
 from message_conversion import flower_to_openfl_message, openfl_to_flower_message
 
-from message_logger import MessageLogger
-message_logger = MessageLogger(log_file='OpenFL_Client_messages.log')
-
 class OpenFLClient:
     def __init__(self, openfl_server_address):
         self.channel = grpc.insecure_channel(openfl_server_address)
@@ -14,22 +11,7 @@ class OpenFLClient:
 
     def send_message_to_server(self, flower_message):
         # Convert Flower message to OpenFL message
-        metadata = dict(flower_message.metadata)
-        message_logger.log_binary_message(
-            metadata,
-            metadata.get('grpc-message-module', ''),
-            metadata.get('grpc-message-qualname', ''),
-            flower_message.grpc_message_content,
-            "Received from Flower Client"
-        )
         openfl_message = flower_to_openfl_message(flower_message)
-        message_logger.log_message(
-            f"message_type: \"{openfl_message.message_type}\" "
-            f"payload (Base64): \"{openfl_message.payload}\" "  # Assuming payload is binary and needs encoding
-            f"headers: {dict(openfl_message.headers)}",
-            "Sending to OpenFL Server"
-        )
-
         # Send the OpenFL message to the OpenFL server and get a response
         openfl_response = self.stub.Exchange(openfl_message)
         # Convert the OpenFL response back to a Flower message
