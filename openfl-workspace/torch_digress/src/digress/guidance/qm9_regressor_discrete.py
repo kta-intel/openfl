@@ -134,7 +134,8 @@ class Qm9RegressorDiscrete(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         mse = self.compute_train_loss(pred, target, log=False) #, log=i % self.log_every_steps == 0)
-        self.log_dict({'train loss': mse})
+        self.train_loss_value.append(mse.item())
+        # self.log_dict({'train loss': mse})
         return {'loss': mse}
 
     def configure_optimizers(self):
@@ -158,9 +159,13 @@ class Qm9RegressorDiscrete(pl.LightningModule):
         self.start_epoch_time = time.time()
         self.train_loss.reset()
         self.train_metrics.reset()
+        self.train_loss_value = []
 
-    # def on_train_epoch_end(self) -> None:
-    #     train_mse = self.train_loss.compute()
+    def on_train_epoch_end(self) -> None:
+        avg_epoch_loss = sum(self.train_loss_value) / len(self.train_loss_value)
+        self.print(f"avg epoch loss = {avg_epoch_loss}")
+        self.log_dict({'train loss': avg_epoch_loss})
+        # train_mse = self.train_loss.compute()
 
     #     to_log = {"train_epoch/mse": train_mse}
     #     print(f"Epoch {self.current_epoch}: train_mse: {train_mse :.3f} -- {time.time() - self.start_epoch_time:.1f}s ")

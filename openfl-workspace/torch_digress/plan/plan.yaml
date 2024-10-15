@@ -8,7 +8,7 @@ aggregator :
     init_state_path     : save/init.pbuf
     best_state_path     : save/best.pbuf
     last_state_path     : save/last.pbuf
-    rounds_to_train     : 4
+    rounds_to_train     : 100
     write_logs: false
 
 collaborator :
@@ -32,13 +32,11 @@ task_runner :
   template : src.taskrunner.DiGress
   settings :
     precision : 32
-    device : gpu
+    device : cuda
     pretrained_regressor_path: null
 
 network:
   defaults: plan/defaults/network.yaml
-  settings:
-    agg_port : 54678
 
 assigner :
   defaults : plan/defaults/assigner.yaml

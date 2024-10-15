@@ -129,7 +129,19 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                           log=False)
                         #    log=i % self.log_every_steps == 0)
 
-        self.log_dict({'train loss': loss})
+        # self.log_dict({'train loss': loss})
+        self.train_loss_value.append(loss.item())
+        # # Print the loss
+        # # print(loss.item())
+        
+        # # Store the loss in a CSV file
+        # log_file = 'training_log.csv'
+        # log_exists = os.path.isfile(log_file)
+        
+        # with open(log_file, 'a') as f:
+        #     if not log_exists:
+        #         f.write('epoch,i,loss\n')  # Write header if file does not exist
+        #     f.write(f'{self.current_epoch},{i},{loss.item()}\n')
 
         return {'loss': loss}
 
@@ -148,16 +160,30 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         self.start_epoch_time = time.time()
         self.train_loss.reset()
         self.train_metrics.reset()
+        self.train_loss_value = []
 
-    # def on_train_epoch_end(self) -> None:
-    #     to_log = self.train_loss.log_epoch_metrics()
-    #     self.print(f"Epoch {self.current_epoch}: X_CE: {to_log['train_epoch/x_CE'] :.3f}"
-    #                   f" -- E_CE: {to_log['train_epoch/E_CE'] :.3f} --"
-    #                   f" y_CE: {to_log['train_epoch/y_CE'] :.3f}"
-    #                   f" -- {time.time() - self.start_epoch_time:.1f}s ")
-    #     epoch_at_metrics, epoch_bond_metrics = self.train_metrics.log_epoch_metrics()
-    #     self.print(f"Epoch {self.current_epoch}: {epoch_at_metrics} -- {epoch_bond_metrics}")
-    #     print(torch.cuda.memory_summary())
+    def on_train_epoch_end(self) -> None:
+        avg_epoch_loss = sum(self.train_loss_value) / len(self.train_loss_value)
+        self.print(f"avg epoch loss = {avg_epoch_loss}")
+        self.log_dict({'train loss': avg_epoch_loss})
+
+        # # Store the average loss in a CSV file
+        # log_file = 'epoch_loss_log.csv'
+        # log_exists = os.path.isfile(log_file)
+        
+        # with open(log_file, 'a') as f:
+        #     if not log_exists:
+        #         f.write('epoch,avg_loss\n')  # Write header if file does not exist
+        #     f.write(f'{self.current_epoch},{avg_epoch_loss}\n')
+
+        # to_log = self.train_loss.log_epoch_metrics()
+        # self.print(f"Epoch {self.current_epoch}: X_CE: {to_log['train_epoch/x_CE'] :.3f}"
+        #               f" -- E_CE: {to_log['train_epoch/E_CE'] :.3f} --"
+        #               f" y_CE: {to_log['train_epoch/y_CE'] :.3f}"
+        #               f" -- {time.time() - self.start_epoch_time:.1f}s ")
+        # epoch_at_metrics, epoch_bond_metrics = self.train_metrics.log_epoch_metrics()
+        # self.print(f"Epoch {self.current_epoch}: {epoch_at_metrics} -- {epoch_bond_metrics}")
+        # print(torch.cuda.memory_summary())
 
     def on_validation_epoch_start(self) -> None:
         self.val_nll.reset()
