@@ -2,7 +2,7 @@ from flwr.proto import grpcadapter_pb2
 from openfl.protocols  import aggregator_pb2
 # from deserialize_message import deserialize_flower_message
 
-def flower_to_openfl_message(flower_message, sender, receiver):
+def flower_to_openfl_message(flower_message, header):
     """Convert a Flower MessageContainer to an OpenFL OpenFLMessage."""
     if isinstance(flower_message, aggregator_pb2.DropPod()):
         # If the input is already an OpenFL message, return it as-is
@@ -13,8 +13,7 @@ def flower_to_openfl_message(flower_message, sender, receiver):
         openfl_message = aggregator_pb2.DropPod()
         
         # Set the MessageHeader fields based on the provided sender and receiver
-        openfl_message.header.sender = sender
-        openfl_message.header.receiver = receiver
+        openfl_message.header = header
         # openfl_message.message_type = flower_message.metadata['grpc-message-qualname']
         serialized_flower_message = flower_message.SerializeToString()
         openfl_message.message.npbytes = serialized_flower_message

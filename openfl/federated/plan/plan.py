@@ -486,9 +486,11 @@ class Plan:
             self.runner_ = Plan.build(**defaults)
 
         # Define task dependencies after taskrunner has been initialized
-        self.runner_.initialize_tensorkeys_for_functions()
-
-        return self.runner_
+        if 'Flower' in defaults['template']:
+            return self.runner_
+        else:
+            self.runner_.initialize_tensorkeys_for_functions()
+            return self.runner_
 
     # Python interactive api
     def get_core_task_runner(self, data_loader=None, model_provider=None, task_keeper=None):
@@ -595,8 +597,11 @@ class Plan:
                 )
             else:
                 # TaskRunner subclassing API
-                data_loader = self.get_data_loader(collaborator_name)
-                defaults[SETTINGS]["task_runner"] = self.get_task_runner(data_loader)
+                if 'Flower' in self.config["task_runner"]["template"]:
+                    defaults[SETTINGS]["task_runner"] = self.get_task_runner(None)
+                else:
+                    data_loader = self.get_data_loader(collaborator_name)
+                    defaults[SETTINGS]["task_runner"] = self.get_task_runner(data_loader)
 
         defaults[SETTINGS]["compression_pipeline"] = self.get_tensor_pipe()
         defaults[SETTINGS]["task_config"] = self.config.get("tasks", {})
@@ -702,6 +707,9 @@ class Plan:
         server_args["private_key"] = private_key
 
         server_args["aggregator"] = self.get_aggregator()
+
+        #TODO have this set in self.config["network"]
+        # server_args["fim"] = True
 
         if self.server_ is None:
             self.server_ = AggregatorGRPCServer(**server_args)

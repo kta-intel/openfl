@@ -169,8 +169,11 @@ class Aggregator:
                 tensor_pipe=self.compression_pipeline,
             )
         else:
-            self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
-            self._load_initial_tensors()  # keys are TensorKeys
+            if self.init_state_path:
+                self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
+                self._load_initial_tensors()  # keys are TensorKeys
+            else:
+                self.model = {}
 
         self.collaborator_tensor_results = {}  # {TensorKey: nparray}}
 
