@@ -496,7 +496,7 @@ class AggregatorGRPCClient:
                                                   header=self.header)
         openfl_response = self.stub.PelicanDrop(openfl_message)
         # Validate openFL response
-        self.validate_response(response, collaborator_name)
+        self.validate_response(openfl_response, collaborator_name)
         flower_response = openfl_to_flower_message(openfl_response)
         # Validate flower response (deserialize message?)
         return flower_response

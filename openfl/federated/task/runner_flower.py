@@ -17,12 +17,12 @@ class FlowerTaskRunner(TaskRunner):
         """
         super().__init__(**kwargs)
    
-    def start_client_adapter(self, openfl_client, **kwargs):
+    def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         local_server_port = kwargs['local_server_port']
 
         # Start the local gRPC server
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
-        grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(LocalGRPCServer(openfl_client), server)
+        grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(LocalGRPCServer(openfl_client, collaborator_name), server)
         
         # TODO: add restrictions
         server.add_insecure_port(f'[::]:{local_server_port}')
@@ -31,15 +31,16 @@ class FlowerTaskRunner(TaskRunner):
 
         # Start the Flower supernode in a subprocess
         # import pdb; pdb.set_trace()
-        supernode_process = subprocess.Popen([
+        command = [
             "flower-supernode",
             kwargs.get('app_path', './app-pytorch'),
             "--insecure",
             "--grpc-adapter",
             "--superlink", f"127.0.0.1:{local_server_port}",
-            "--node-config", f"num-partitions={kwargs.get('num_partitions', 1)}",
-            "--node-config", f"partition-id={kwargs.get('partition_id', 0)}"
-        ], shell=False)
+            "--node-config", f"num-partitions={kwargs.get('num_partitions', 1)} partition-id={kwargs.get('partition_id', 0)}"
+        ]
+        # Start the subprocess
+        supernode_process = subprocess.Popen(command, shell=False)
 
         server.wait_for_termination()
 

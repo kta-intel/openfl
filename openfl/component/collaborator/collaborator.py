@@ -241,12 +241,11 @@ class Collaborator:
                 task_name = task.name
             func_name = self.task_config[task_name]["function"]
             kwargs = self.task_config[task_name]["kwargs"]
-
         if func_name=="start_client_adapter":
             if hasattr(self.task_runner, func_name):
                 method = getattr(self.task_runner, func_name)
                 if callable(method):
-                    method(self.client, **kwargs) 
+                    method(self.client, self.collaborator_name, **kwargs) 
                     return
                 else:
                     raise AttributeError(f"{func_name} is not callable on {self.task_runner}")
