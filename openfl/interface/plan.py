@@ -55,7 +55,7 @@ def plan(context):
     required=False,
     help="Authorized collaborator list [plan/cols.yaml]",
     default="plan/cols.yaml",
-    type=ClickPath(exists=True),
+    type=ClickPath(exists=False),
 )
 @option(
     "-d",
@@ -63,7 +63,7 @@ def plan(context):
     required=False,
     help="The data set/shard configuration file [plan/data.yaml]",
     default="plan/data.yaml",
-    type=ClickPath(exists=True),
+    type=ClickPath(exists=False),
 )
 @option(
     "-a",
@@ -94,6 +94,13 @@ def plan(context):
     help="Install packages listed under 'requirements.txt'. True/False [Default: True]",
     default=True,
 )
+@option(
+    "-fim",
+    "--framework_interoperability_mode",
+    required=False,
+    help="For interoperability with other FL frameworks. True/False [Default: True]",
+    default=False,
+)
 def initialize(
     context,
     plan_config,
@@ -103,6 +110,7 @@ def initialize(
     input_shape,
     gandlf_config,
     install_reqs,
+    framework_interoperability_mode
 ):
     """Initialize Data Science plan.
 
@@ -119,107 +127,138 @@ def initialize(
         gandlf_config (str): GaNDLF Configuration File Path.
         install_reqs (bool): Whether to install packages listed under 'requirements.txt'.
     """
+    if framework_interoperability_mode:
+        plan_config = Path(plan_config).absolute()
+        cols_config = Path(cols_config).absolute()
 
-    for p in [plan_config, cols_config, data_config]:
-        if is_directory_traversal(p):
-            echo(f"{p} is out of the openfl workspace scope.")
-            sys.exit(1)
-
-    plan_config = Path(plan_config).absolute()
-    cols_config = Path(cols_config).absolute()
-    data_config = Path(data_config).absolute()
-    if gandlf_config is not None:
-        gandlf_config = Path(gandlf_config).absolute()
-
-    if install_reqs:
-        requirements_filename = "requirements.txt"
-        requirements_path = Path(requirements_filename).absolute()
-
-        if isfile(f"{str(requirements_path)}"):
-            check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    f"{str(requirements_path)}",
-                ],
-                shell=False,
-            )
-            echo(f"Successfully installed packages from {requirements_path}.")
-
-            # Required to restart the process for newly installed packages to be recognized
-            args_restart = [arg for arg in sys.argv if not arg.startswith("--install_reqs")]
-            args_restart.append("--install_reqs=False")
-            os.execv(args_restart[0], args_restart)
-        else:
-            echo("No additional requirements for workspace defined. Skipping...")
-
-    plan = Plan.parse(
-        plan_config_path=plan_config,
-        cols_config_path=cols_config,
-        data_config_path=data_config,
-        gandlf_config_path=gandlf_config,
-    )
-
-    init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
-
-    # This is needed to bypass data being locally available
-    if input_shape is not None:
-        logger.info(
-            "Attempting to generate initial model weights with" f" custom input shape {input_shape}"
+        plan = Plan.parse(
+            plan_config_path=plan_config,
+            cols_config_path=cols_config,
         )
 
-    data_loader = get_dataloader(plan, prefer_minimal=True, input_shape=input_shape)
+        plan_origin = Plan.parse(
+            plan_config_path=plan_config,
+            resolve=False,
+        )
 
-    task_runner = plan.get_task_runner(data_loader)
-    tensor_pipe = plan.get_tensor_pipe()
+        if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
+            plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
 
-    tensor_dict, holdout_params = split_tensor_dict_for_holdouts(
-        logger,
-        task_runner.get_tensor_dict(False),
-        **task_runner.tensor_dict_split_fn_kwargs,
-    )
+            logger.warn(
+                f"Patching Aggregator Addr in Plan"
+                f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
+            )
 
-    logger.warn(
-        f"Following parameters omitted from global initial model, "
-        f"local initialization will determine"
-        f" values: {list(holdout_params.keys())}"
-    )
+            Plan.dump(plan_config, plan_origin.config)
 
-    model_snap = utils.construct_model_proto(
-        tensor_dict=tensor_dict, round_number=0, tensor_pipe=tensor_pipe
-    )
+        # Record that plan with this hash has been initialized
+        if "plans" not in context.obj:
+            context.obj["plans"] = []
+        context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
+        logger.info(f"{context.obj['plans']}")
 
-    logger.info("Creating Initial Weights File    🠆 %s", init_state_path)
+    else:
+        
+        for p in [plan_config, cols_config, data_config]:
+            if is_directory_traversal(p):
+                echo(f"{p} is out of the openfl workspace scope.")
+                sys.exit(1)
 
-    utils.dump_proto(model_proto=model_snap, fpath=init_state_path)
+        plan_config = Path(plan_config).absolute()
+        cols_config = Path(cols_config).absolute()
+        data_config = Path(data_config).absolute()
+        if gandlf_config is not None:
+            gandlf_config = Path(gandlf_config).absolute()
 
-    plan_origin = Plan.parse(
-        plan_config_path=plan_config,
-        gandlf_config_path=gandlf_config,
-        resolve=False,
-    )
+        if install_reqs:
+            requirements_filename = "requirements.txt"
+            requirements_path = Path(requirements_filename).absolute()
 
-    if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
-        plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
+            if isfile(f"{str(requirements_path)}"):
+                check_call(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        "-r",
+                        f"{str(requirements_path)}",
+                    ],
+                    shell=False,
+                )
+                echo(f"Successfully installed packages from {requirements_path}.")
+
+                # Required to restart the process for newly installed packages to be recognized
+                args_restart = [arg for arg in sys.argv if not arg.startswith("--install_reqs")]
+                args_restart.append("--install_reqs=False")
+                os.execv(args_restart[0], args_restart)
+            else:
+                echo("No additional requirements for workspace defined. Skipping...")
+
+        plan = Plan.parse(
+            plan_config_path=plan_config,
+            cols_config_path=cols_config,
+            data_config_path=data_config,
+            gandlf_config_path=gandlf_config,
+        )
+
+        init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
+
+        # This is needed to bypass data being locally available
+        if input_shape is not None:
+            logger.info(
+                "Attempting to generate initial model weights with" f" custom input shape {input_shape}"
+            )
+
+        data_loader = get_dataloader(plan, prefer_minimal=True, input_shape=input_shape)
+
+        task_runner = plan.get_task_runner(data_loader)
+        tensor_pipe = plan.get_tensor_pipe()
+
+        tensor_dict, holdout_params = split_tensor_dict_for_holdouts(
+            logger,
+            task_runner.get_tensor_dict(False),
+            **task_runner.tensor_dict_split_fn_kwargs,
+        )
 
         logger.warn(
-            f"Patching Aggregator Addr in Plan"
-            f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
+            f"Following parameters omitted from global initial model, "
+            f"local initialization will determine"
+            f" values: {list(holdout_params.keys())}"
         )
 
-        Plan.dump(plan_config, plan_origin.config)
+        model_snap = utils.construct_model_proto(
+            tensor_dict=tensor_dict, round_number=0, tensor_pipe=tensor_pipe
+        )
 
-    if gandlf_config is not None:
-        Plan.dump(plan_config, plan_origin.config)
+        logger.info("Creating Initial Weights File    🠆 %s", init_state_path)
 
-    # Record that plan with this hash has been initialized
-    if "plans" not in context.obj:
-        context.obj["plans"] = []
-    context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
-    logger.info(f"{context.obj['plans']}")
+        utils.dump_proto(model_proto=model_snap, fpath=init_state_path)
+
+        plan_origin = Plan.parse(
+            plan_config_path=plan_config,
+            gandlf_config_path=gandlf_config,
+            resolve=False,
+        )
+
+        if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
+            plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
+
+            logger.warn(
+                f"Patching Aggregator Addr in Plan"
+                f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
+            )
+
+            Plan.dump(plan_config, plan_origin.config)
+
+        if gandlf_config is not None:
+            Plan.dump(plan_config, plan_origin.config)
+
+        # Record that plan with this hash has been initialized
+        if "plans" not in context.obj:
+            context.obj["plans"] = []
+        context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
+        logger.info(f"{context.obj['plans']}")
 
 
 # TODO: looks like Plan.method

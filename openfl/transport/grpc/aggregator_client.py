@@ -13,7 +13,9 @@ import grpc
 from openfl.pipelines import NoCompressionPipeline
 from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
+from openfl.transport.grpc.fim.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 from openfl.utilities import check_equal
+
 
 
 class ConstantBackoff:
@@ -484,6 +486,19 @@ class AggregatorGRPCClient:
 
         # also do other validation, like on the round_number
         self.validate_response(response, collaborator_name)
+
+    @_atomic_connection
+    @_resend_data_on_reconnection
+    def send_message_to_server(self, flower_message, collaborator_name):
+        self._set_header(collaborator_name)
+        openfl_message = flower_to_openfl_message(flower_message, 
+                                                  header=self.header)
+        openfl_response = self.stub.PelicanDrop(openfl_message)
+        # Validate openFL response
+        self.validate_response(openfl_response, collaborator_name)
+        flower_response = openfl_to_flower_message(openfl_response)
+        # Validate flower response (deserialize message?)
+        return flower_response
 
     def _get_trained_model(self, experiment_name, model_type):
         """Get trained model RPC.

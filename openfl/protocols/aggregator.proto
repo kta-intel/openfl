@@ -16,6 +16,7 @@ service Aggregator {
   rpc GetTrainedModel(GetTrainedModelRequest) returns (TrainedModelResponse) {}
   rpc GetExperimentDescription(GetExperimentDescriptionRequest)
     returns (GetExperimentDescriptionResponse) {}
+  rpc PelicanDrop(DropPod) returns (DropPod) {}
 }
 
 message MessageHeader {
@@ -111,4 +112,10 @@ message GetExperimentDescriptionRequest {
 // The same with director.proto
 message GetExperimentDescriptionResponse {
   ExperimentDescription experiment = 1;
+}
+
+message DropPod {
+  MessageHeader header = 1;
+  DataStream message = 2;
+  map<string, string> metadata = 3;
 }

@@ -14,7 +14,10 @@ from grpc import StatusCode, server, ssl_server_credentials
 
 from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
+from openfl.transport.grpc.fim.flower.local_grpc_client import LocalGRPCClient
 from openfl.utilities import check_equal, check_is_in
+
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +53,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         root_certificate=None,
         certificate=None,
         private_key=None,
+        fim=False,  # Add a flag for Flower transport mode
         **kwargs,
     ):
         """
@@ -68,6 +72,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
                 TLS connection.
             private_key (str): The path to the server's private key for the
                 TLS connection.
+            fim (bool): whether to use framework interopability mode
             **kwargs: Additional keyword arguments.
         """
         self.aggregator = aggregator
@@ -79,6 +84,13 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         self.private_key = private_key
         self.server = None
         self.server_credentials = None
+
+        self.fim = fim 
+        if self.fim:
+            superlink_address = '127.0.0.1:9093' #kwargs.get("superlink_address")
+            self.local_grpc_client = LocalGRPCClient(superlink_address)  # Initialize the local gRPC client for Flower
+        else:
+            self.local_grpc_client = None
 
         self.logger = logging.getLogger(__name__)
 
@@ -177,6 +189,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         Returns:
             aggregator_pb2.GetTasksResponse: The response to the request.
         """
+        # if self.fim:
+        #     context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
+
         self.validate_collaborator(request, context)
         self.check_request(request)
         collaborator_name = request.header.sender
@@ -228,6 +243,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.GetAggregatedTensorResponse: The response to the
                 request.
         """
+        if self.fim:
+            context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
+
         self.validate_collaborator(request, context)
         self.check_request(request)
         collaborator_name = request.header.sender
@@ -267,6 +285,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.SendLocalTaskResultsResponse: The response to the
                 request.
         """
+        if self.fim:
+            context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
+
         try:
             proto = aggregator_pb2.TaskResults()
             proto = utils.datastream_to_proto(proto, request)
@@ -292,6 +313,29 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             header=self.get_header(collaborator_name)
         )
 
+    def PelicanDrop(self, request, context):
+        """
+        Args:
+            request (aggregator_pb2.PelicanDrop): The request
+                from the collaborator.
+            context (grpc.ServicerContext): The context of the request.
+
+        Returns:
+            aggregator_pb2.PelicanDrop: The response to the
+            request.
+        """
+        if not self.fim:
+            context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in framework interopability mode.")
+
+        #TODO: local gRPC should have it's own verification when receiving and converting flower messages
+        self.validate_collaborator(request, context)
+        self.check_request(request)
+        collaborator_name = request.header.sender
+
+        # Forward the incoming OpenFL message to the local gRPC client
+        print(f"OpenFL Server: Received message from OpenFL client, sending message to Flower server")
+        return self.local_grpc_client.send_receive(request, header=self.get_header(collaborator_name))
+
     def get_server(self):
         """
         Return gRPC server.
@@ -302,6 +346,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         Returns:
             grpc.Server: The gRPC server.
         """
+        # TODO: Need to launch superlink and flower server app somewhere
         self.server = server(ThreadPoolExecutor(max_workers=cpu_count()), options=channel_options)
 
         aggregator_pb2_grpc.add_AggregatorServicer_to_server(self, self.server)
@@ -337,7 +382,26 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         This method starts the gRPC server and handles requests until all quit
         jobs havebeen sent.
+
         """
+        if getattr(self, 'fim', False):
+            # Start the Flower superlink in a subprocess
+            superlink_process = subprocess.Popen([
+                "flower-superlink",
+                "--insecure",
+                "--fleet-api-type", "grpc-adapter",
+                "--fleet-api-address", "127.0.0.1:9093",
+                "--driver-api-address", "127.0.0.1:9091"
+            ], shell=False)
+
+            # Start the Flower server app in a subprocess
+            server_app_process = subprocess.Popen([
+                "flower-server-app",
+                "./app-pytorch",
+                "--insecure",
+                "--superlink", "127.0.0.1:9091"
+            ], shell=False)
+
         self.get_server()
 
         self.logger.info("Starting Aggregator gRPC Server")
@@ -350,3 +414,10 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             pass
 
         self.server.stop(0)
+
+        if getattr(self, 'fim', False):
+            superlink_process.terminate()
+            server_app_process.terminate()
+
+            superlink_process.wait()
+            server_app_process.wait()

@@ -1,0 +1,44 @@
+# Copyright (C) 2020-2024 Intel Corporation
+# Licensed subject to the terms of the separately executed evaluation license agreement between Intel Corporation and you.
+
+aggregator :
+  defaults : plan/defaults/aggregator.yaml
+  template : openfl.component.Aggregator
+  settings :
+    init_state_path : null
+    best_state_path : null
+    last_state_path : null
+    rounds_to_train : 1
+
+collaborator :
+  defaults : plan/defaults/collaborator.yaml
+  template : openfl.component.Collaborator
+  settings :
+    {}
+
+network :
+  defaults : plan/defaults/network.yaml
+  settings :
+    fim : True
+
+assigner :
+  defaults : plan/defaults/assigner.yaml
+  template : openfl.component.RandomGroupedAssigner
+  settings :
+    task_groups  :
+      - name       : flower_adapter
+        percentage : 1.0
+        tasks      :
+          - start_client_adapter
+
+task_runner :
+  defaults : plan/defaults/task_runner.yaml
+  template : openfl.federated.task.runner_flower.FlowerTaskRunner
+  settings :
+    {}
+
+tasks :
+  defaults : plan/defaults/tasks_flower.yaml
+
+compression_pipeline :
+  defaults : plan/defaults/compression_pipeline.yaml

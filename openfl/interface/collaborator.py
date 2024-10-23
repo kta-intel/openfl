@@ -55,7 +55,7 @@ def collaborator(context):
     required=False,
     help="The data set/shard configuration file [plan/data.yaml]",
     default="plan/data.yaml",
-    type=ClickPath(exists=True),
+    type=ClickPath(exists=False),
 )
 @option(
     "-n",
@@ -63,27 +63,42 @@ def collaborator(context):
     required=True,
     help="The certified common name of the collaborator",
 )
-def start_(plan, collaborator_name, data_config):
+@option(
+    "-fim",
+    "--framework_interoperability_mode",
+    required=False,
+    help="For interoperability with other FL frameworks. True/False [Default: True]",
+    default=False,
+)
+def start_(plan, collaborator_name, data_config, framework_interoperability_mode):
     """Start a collaborator service."""
 
-    if plan and is_directory_traversal(plan):
-        echo("Federated learning plan path is out of the openfl workspace scope.")
-        sys.exit(1)
-    if data_config and is_directory_traversal(data_config):
-        echo("The data set/shard configuration file path is out of the openfl workspace scope.")
-        sys.exit(1)
+    if framework_interoperability_mode:
+        plan = Plan.parse(
+            plan_config_path=Path(plan).absolute(),
+        )
+        logger.info("🧿 Starting a Collaborator Service.")
+        plan.get_collaborator(collaborator_name).run()
 
-    plan = Plan.parse(
-        plan_config_path=Path(plan).absolute(),
-        data_config_path=Path(data_config).absolute(),
-    )
+    else:
+        if plan and is_directory_traversal(plan):
+            echo("Federated learning plan path is out of the openfl workspace scope.")
+            sys.exit(1)
+        if data_config and is_directory_traversal(data_config):
+            echo("The data set/shard configuration file path is out of the openfl workspace scope.")
+            sys.exit(1)
 
-    # TODO: Need to restructure data loader config file loader
+        plan = Plan.parse(
+            plan_config_path=Path(plan).absolute(),
+            data_config_path=Path(data_config).absolute(),
+        )
 
-    echo(f"Data = {plan.cols_data_paths}")
-    logger.info("🧿 Starting a Collaborator Service.")
+        # TODO: Need to restructure data loader config file loader
 
-    plan.get_collaborator(collaborator_name).run()
+        echo(f"Data = {plan.cols_data_paths}")
+        logger.info("🧿 Starting a Collaborator Service.")
+
+        plan.get_collaborator(collaborator_name).run()
 
 
 @collaborator.command(name="create")
