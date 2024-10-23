@@ -490,7 +490,6 @@ class AggregatorGRPCClient:
     @_atomic_connection
     @_resend_data_on_reconnection
     def send_message_to_server(self, flower_message, collaborator_name):
-        # TODO, how to add header information to the message?
         self._set_header(collaborator_name)
         openfl_message = flower_to_openfl_message(flower_message, 
                                                   header=self.header)

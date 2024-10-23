@@ -9,8 +9,6 @@ class LocalGRPCClient:
 
     def send_receive(self, openfl_message, header):
         # TODO: verification step for messages coming from Flower server
-        collaborator_name = openfl_message.header.sender
-
         flower_message = openfl_to_flower_message(openfl_message)
         flower_response = self.superlink_stub.SendReceive(flower_message)
         # print(f"Received message from Flower server, sending response through OpenFL server back to OpenFL client: {flower_response.grpc_message_name}")

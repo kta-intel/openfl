@@ -327,13 +327,11 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         if not self.fim:
             context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in framework interopability mode.")
 
-        #TODO: This needs to be done when receiving from OpenFL client (not from local gRPC client, local gRPC should have it's own verification)
-        #This seems like the right step for this verification since we don't send to local gRPC yet
+        #TODO: local gRPC should have it's own verification when receiving and converting flower messages
         self.validate_collaborator(request, context)
         self.check_request(request)
         collaborator_name = request.header.sender
 
-        #TODO: Extract header information from client request (i.e. collaborator_name = request.header.sender)
         # Forward the incoming OpenFL message to the local gRPC client
         print(f"OpenFL Server: Received message from OpenFL client, sending message to Flower server")
         return self.local_grpc_client.send_receive(request, header=self.get_header(collaborator_name))
