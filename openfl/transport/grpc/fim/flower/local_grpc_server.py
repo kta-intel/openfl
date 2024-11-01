@@ -1,11 +1,4 @@
-import grpc
-from concurrent.futures import ThreadPoolExecutor
 from flwr.proto import grpcadapter_pb2_grpc
-from multiprocessing import cpu_count
-from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc
-from openfl.transport import AggregatorGRPCClient
-from openfl.transport.grpc.fim.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
-
 
 class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
     def __init__(self, openfl_client, collaborator_name):

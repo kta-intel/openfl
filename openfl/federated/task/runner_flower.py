@@ -16,6 +16,8 @@ class FlowerTaskRunner(TaskRunner):
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
+        self.num_partitions = self.data_loader.get_node_configs()[0]
+        self.partition_id = self.data_loader.get_node_configs()[1]
    
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         local_server_port = kwargs['local_server_port']
@@ -33,11 +35,11 @@ class FlowerTaskRunner(TaskRunner):
         # import pdb; pdb.set_trace()
         command = [
             "flower-supernode",
-            kwargs.get('app_path', './app-pytorch'),
+            "./app-pytorch",
             "--insecure",
             "--grpc-adapter",
             "--superlink", f"127.0.0.1:{local_server_port}",
-            "--node-config", f"num-partitions={kwargs.get('num_partitions', 1)} partition-id={kwargs.get('partition_id', 0)}"
+            "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
         ]
         # Start the subprocess
         supernode_process = subprocess.Popen(command, shell=False)

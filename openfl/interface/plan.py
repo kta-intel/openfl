@@ -127,81 +127,51 @@ def initialize(
         gandlf_config (str): GaNDLF Configuration File Path.
         install_reqs (bool): Whether to install packages listed under 'requirements.txt'.
     """
-    if framework_interoperability_mode:
-        plan_config = Path(plan_config).absolute()
-        cols_config = Path(cols_config).absolute()
-
-        plan = Plan.parse(
-            plan_config_path=plan_config,
-            cols_config_path=cols_config,
-        )
-
-        plan_origin = Plan.parse(
-            plan_config_path=plan_config,
-            resolve=False,
-        )
-
-        if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
-            plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
-
-            logger.warn(
-                f"Patching Aggregator Addr in Plan"
-                f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
-            )
-
-            Plan.dump(plan_config, plan_origin.config)
-
-        # Record that plan with this hash has been initialized
-        if "plans" not in context.obj:
-            context.obj["plans"] = []
-        context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
-        logger.info(f"{context.obj['plans']}")
-
-    else:
         
-        for p in [plan_config, cols_config, data_config]:
-            if is_directory_traversal(p):
-                echo(f"{p} is out of the openfl workspace scope.")
-                sys.exit(1)
+    for p in [plan_config, cols_config, data_config]:
+        if is_directory_traversal(p):
+            echo(f"{p} is out of the openfl workspace scope.")
+            sys.exit(1)
 
-        plan_config = Path(plan_config).absolute()
-        cols_config = Path(cols_config).absolute()
-        data_config = Path(data_config).absolute()
-        if gandlf_config is not None:
-            gandlf_config = Path(gandlf_config).absolute()
+    plan_config = Path(plan_config).absolute()
+    cols_config = Path(cols_config).absolute()
+    data_config = Path(data_config).absolute()
+    if gandlf_config is not None:
+        gandlf_config = Path(gandlf_config).absolute()
 
-        if install_reqs:
-            requirements_filename = "requirements.txt"
-            requirements_path = Path(requirements_filename).absolute()
+    if install_reqs:
+        requirements_filename = "requirements.txt"
+        requirements_path = Path(requirements_filename).absolute()
 
-            if isfile(f"{str(requirements_path)}"):
-                check_call(
-                    [
-                        sys.executable,
-                        "-m",
-                        "pip",
-                        "install",
-                        "-r",
-                        f"{str(requirements_path)}",
-                    ],
-                    shell=False,
-                )
-                echo(f"Successfully installed packages from {requirements_path}.")
+        if isfile(f"{str(requirements_path)}"):
+            check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    f"{str(requirements_path)}",
+                ],
+                shell=False,
+            )
+            echo(f"Successfully installed packages from {requirements_path}.")
 
-                # Required to restart the process for newly installed packages to be recognized
-                args_restart = [arg for arg in sys.argv if not arg.startswith("--install_reqs")]
-                args_restart.append("--install_reqs=False")
-                os.execv(args_restart[0], args_restart)
-            else:
-                echo("No additional requirements for workspace defined. Skipping...")
+            # Required to restart the process for newly installed packages to be recognized
+            args_restart = [arg for arg in sys.argv if not arg.startswith("--install_reqs")]
+            args_restart.append("--install_reqs=False")
+            os.execv(args_restart[0], args_restart)
+        else:
+            echo("No additional requirements for workspace defined. Skipping...")
 
-        plan = Plan.parse(
-            plan_config_path=plan_config,
-            cols_config_path=cols_config,
-            data_config_path=data_config,
-            gandlf_config_path=gandlf_config,
-        )
+    plan = Plan.parse(
+        plan_config_path=plan_config,
+        cols_config_path=cols_config,
+        data_config_path=data_config,
+        gandlf_config_path=gandlf_config,
+    )
 
+    if not framework_interoperability_mode:
         init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
 
         # This is needed to bypass data being locally available
@@ -235,30 +205,30 @@ def initialize(
 
         utils.dump_proto(model_proto=model_snap, fpath=init_state_path)
 
-        plan_origin = Plan.parse(
-            plan_config_path=plan_config,
-            gandlf_config_path=gandlf_config,
-            resolve=False,
+    plan_origin = Plan.parse(
+        plan_config_path=plan_config,
+        gandlf_config_path=gandlf_config,
+        resolve=False,
+    )
+
+    if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
+        plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
+
+        logger.warn(
+            f"Patching Aggregator Addr in Plan"
+            f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
         )
 
-        if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
-            plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
+        Plan.dump(plan_config, plan_origin.config)
 
-            logger.warn(
-                f"Patching Aggregator Addr in Plan"
-                f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
-            )
+    if gandlf_config is not None:
+        Plan.dump(plan_config, plan_origin.config)
 
-            Plan.dump(plan_config, plan_origin.config)
-
-        if gandlf_config is not None:
-            Plan.dump(plan_config, plan_origin.config)
-
-        # Record that plan with this hash has been initialized
-        if "plans" not in context.obj:
-            context.obj["plans"] = []
-        context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
-        logger.info(f"{context.obj['plans']}")
+    # Record that plan with this hash has been initialized
+    if "plans" not in context.obj:
+        context.obj["plans"] = []
+    context.obj["plans"].append(f"{plan_config.stem}_{plan_origin.hash[:8]}")
+    logger.info(f"{context.obj['plans']}")
 
 
 # TODO: looks like Plan.method

@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2024 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # Licensed subject to the terms of the separately executed evaluation license agreement between Intel Corporation and you.
 
 aggregator :
@@ -16,6 +16,18 @@ collaborator :
   settings :
     {}
 
+data_loader :
+  defaults : plan/defaults/data_loader.yaml
+  template : openfl.federated.data.loader_flower.FlowerDataLoader
+  settings :
+    collaborator_count : 2
+
+task_runner :
+  defaults : plan/defaults/task_runner.yaml
+  template : openfl.federated.task.runner_flower.FlowerTaskRunner
+  settings :
+    {}
+
 network :
   defaults : plan/defaults/network.yaml
   settings :
@@ -30,12 +42,6 @@ assigner :
         percentage : 1.0
         tasks      :
           - start_client_adapter
-
-task_runner :
-  defaults : plan/defaults/task_runner.yaml
-  template : openfl.federated.task.runner_flower.FlowerTaskRunner
-  settings :
-    {}
 
 tasks :
   defaults : plan/defaults/tasks_flower.yaml

@@ -597,11 +597,8 @@ class Plan:
                 )
             else:
                 # TaskRunner subclassing API
-                if 'Flower' in self.config["task_runner"]["template"]:
-                    defaults[SETTINGS]["task_runner"] = self.get_task_runner(None)
-                else:
-                    data_loader = self.get_data_loader(collaborator_name)
-                    defaults[SETTINGS]["task_runner"] = self.get_task_runner(data_loader)
+                data_loader = self.get_data_loader(collaborator_name)
+                defaults[SETTINGS]["task_runner"] = self.get_task_runner(data_loader)
 
         defaults[SETTINGS]["compression_pipeline"] = self.get_tensor_pipe()
         defaults[SETTINGS]["task_config"] = self.config.get("tasks", {})

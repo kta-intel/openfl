@@ -63,42 +63,27 @@ def collaborator(context):
     required=True,
     help="The certified common name of the collaborator",
 )
-@option(
-    "-fim",
-    "--framework_interoperability_mode",
-    required=False,
-    help="For interoperability with other FL frameworks. True/False [Default: True]",
-    default=False,
-)
-def start_(plan, collaborator_name, data_config, framework_interoperability_mode):
+def start_(plan, collaborator_name, data_config):
     """Start a collaborator service."""
 
-    if framework_interoperability_mode:
-        plan = Plan.parse(
-            plan_config_path=Path(plan).absolute(),
-        )
-        logger.info("🧿 Starting a Collaborator Service.")
-        plan.get_collaborator(collaborator_name).run()
+    if plan and is_directory_traversal(plan):
+        echo("Federated learning plan path is out of the openfl workspace scope.")
+        sys.exit(1)
+    if data_config and is_directory_traversal(data_config):
+        echo("The data set/shard configuration file path is out of the openfl workspace scope.")
+        sys.exit(1)
 
-    else:
-        if plan and is_directory_traversal(plan):
-            echo("Federated learning plan path is out of the openfl workspace scope.")
-            sys.exit(1)
-        if data_config and is_directory_traversal(data_config):
-            echo("The data set/shard configuration file path is out of the openfl workspace scope.")
-            sys.exit(1)
+    plan = Plan.parse(
+        plan_config_path=Path(plan).absolute(),
+        data_config_path=Path(data_config).absolute(),
+    )
 
-        plan = Plan.parse(
-            plan_config_path=Path(plan).absolute(),
-            data_config_path=Path(data_config).absolute(),
-        )
+    # TODO: Need to restructure data loader config file loader
 
-        # TODO: Need to restructure data loader config file loader
+    echo(f"Data = {plan.cols_data_paths}")
+    logger.info("🧿 Starting a Collaborator Service.")
 
-        echo(f"Data = {plan.cols_data_paths}")
-        logger.info("🧿 Starting a Collaborator Service.")
-
-        plan.get_collaborator(collaborator_name).run()
+    plan.get_collaborator(collaborator_name).run()
 
 
 @collaborator.command(name="create")
