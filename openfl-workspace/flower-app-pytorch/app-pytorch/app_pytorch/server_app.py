@@ -8,8 +8,8 @@ from app_pytorch.task import Net, get_weights
 
 def server_fn(context: Context):
     # Read from config
-    num_rounds = 3 #context.run_config["num-server-rounds"]
-    fraction_fit = 0.5 #context.run_config["fraction-fit"]
+    num_rounds = context.run_config["num-server-rounds"]
+    fraction_fit = context.run_config["fraction-fit"]
 
     # Initialize model parameters
     ndarrays = get_weights(Net())
