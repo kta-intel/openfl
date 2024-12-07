@@ -2,6 +2,7 @@
 # Copyright (C) 2020-2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 """CLI module."""
+
 import logging
 import os
 import re
@@ -319,7 +320,7 @@ def entry():
     root = Path(__file__).parent.resolve()
 
     if experimental.exists():
-        root = root.parent.joinpath("experimental", "interface", "cli").resolve()
+        root = root.parent.joinpath("experimental", "workflow", "interface", "cli").resolve()
 
     work = Path.cwd().resolve()
     path.append(str(root))

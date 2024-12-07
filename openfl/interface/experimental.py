@@ -3,6 +3,7 @@
 
 
 """Experimental CLI."""
+
 from logging import getLogger
 from pathlib import Path
 from subprocess import check_call
@@ -35,6 +36,7 @@ def activate():
         .joinpath(
             "openfl-tutorials",
             "experimental",
+            "workflow",
             "workflow_interface_requirements.txt",
         )
         .resolve()

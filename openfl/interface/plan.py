@@ -3,6 +3,7 @@
 
 
 """Plan module."""
+
 import os
 import sys
 from logging import getLogger
@@ -191,11 +192,11 @@ def initialize(
             **task_runner.tensor_dict_split_fn_kwargs,
         )
 
-        logger.warn(
-            f"Following parameters omitted from global initial model, "
-            f"local initialization will determine"
-            f" values: {list(holdout_params.keys())}"
-        )
+    logger.warning(
+        f"Following parameters omitted from global initial model, "
+        f"local initialization will determine"
+        f" values: {list(holdout_params.keys())}"
+    )
 
         model_snap = utils.construct_model_proto(
             tensor_dict=tensor_dict, round_number=0, tensor_pipe=tensor_pipe
@@ -214,7 +215,7 @@ def initialize(
     if plan_origin.config["network"]["settings"]["agg_addr"] == "auto" or aggregator_address:
         plan_origin.config["network"]["settings"]["agg_addr"] = aggregator_address or getfqdn_env()
 
-        logger.warn(
+        logger.warning(
             f"Patching Aggregator Addr in Plan"
             f" 🠆 {plan_origin.config['network']['settings']['agg_addr']}"
         )

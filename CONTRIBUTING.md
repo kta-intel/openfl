@@ -55,19 +55,19 @@ git clone https://github.com/YOUR_GITHUB_USERNAME/openfl.git
 cd openfl
 pip install -U pip setuptools wheel
 pip install .
-pip install -r requirements-linters.txt
+pip install -r linters-requirements.txt
 ```
 
 ## Code style
 
-OpenFL uses [black](https://black.readthedocs.io/en/stable/), [isort](https://pycqa.github.io/isort/) and [precommit](https://pre-commit.com/) to format the code.
+OpenFL uses [ruff](https://github.com/astral-sh/ruff) to lint/format code and [precommit](https://pre-commit.com/) checks.
 
 Run the following command at the **root** directory of the repo to format your code.
 
 ```
-sh shell/format.sh
+sh scripts/format.sh
 ```
-You may need to resolve errors that could not be resolved by autoformatting. To only show lint errors, run `sh shell/lint.sh` at the **root** directory of the repo.
+You may need to resolve errors that could not be resolved by autoformatting. To only show lint errors, run `sh scripts/lint.sh` at the **root** directory of the repo.
 
 ### Docstrings
 Since docstrings cannot be checked or standardized, if you do write/edit any docstring, make sure to check them manually. OpenFL docstrings should follow the conventions below:
