@@ -32,13 +32,18 @@ class FlowerTaskRunner(TaskRunner):
         print(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
 
         # Start the Flower supernode in a subprocess
-        # import pdb; pdb.set_trace()
         command = [
             "flower-supernode",
-            "./app-pytorch",
             "--insecure",
             "--grpc-adapter",
-            "--superlink", f"127.0.0.1:{local_server_port}",
+            "--superlink", f"127.0.0.1:{local_server_port}", # This should connect to local gRPC server
+            # TODO: you must specify separate client ports when running multiple super nodes
+            # on a single machine (i.e. a local poc). We need to add ability to automatically
+            # set separate ports for each client if it is set as a local poc, otherwise it can be
+            # whatever is automatically set by the system. Or we can add option to set port manually
+            # or let it be automatically set
+            # TODO: temporarilty add client port to a collaborator unique yaml (i.e. data)
+            "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
             "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
         ]
         # Start the subprocess

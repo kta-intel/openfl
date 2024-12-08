@@ -1,4 +1,4 @@
 start_client_adapter:
   function : start_client_adapter
   kwargs   :
-    local_server_port : 9092
+    local_server_port : 9090 # local grpc server

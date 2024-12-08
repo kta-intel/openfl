@@ -88,7 +88,8 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         self.fim = fim 
         if self.fim:
-            superlink_address = '127.0.0.1:9093' #kwargs.get("superlink_address")
+            # TODO Let user specify?
+            superlink_address = '127.0.0.1:9092' # NTS: This is the address that the Flower server will be listening on
             self.local_grpc_client = LocalGRPCClient(superlink_address)  # Initialize the local gRPC client for Flower
         else:
             self.local_grpc_client = None
@@ -395,16 +396,21 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
                 "flower-superlink",
                 "--insecure",
                 "--fleet-api-type", "grpc-adapter",
-                "--fleet-api-address", "127.0.0.1:9093",
-                "--driver-api-address", "127.0.0.1:9091"
+                # "--fleet-api-address", "127.0.0.1:9093",
+                # "--driver-api-address", "127.0.0.1:9091",
+                # TODO, double check the addresses to make sure they are
+                # interacting properly
+                "--serverappio-api-address", "127.0.0.1:9091", # NTS: ?
+                "--fleet-api-address",  "127.0.0.1:9092", # NTS: local gRPC client will connect here
+                "--exec-api-address", "127.0.0.1:9093", # NTS: port for server-app toml
             ], shell=False)
 
             # Start the Flower server app in a subprocess
-            server_app_process = subprocess.Popen([
-                "flower-server-app",
+            flwr_run_process = subprocess.Popen([
+                "flwr",
+                "run",
                 "./app-pytorch",
-                "--insecure",
-                "--superlink", "127.0.0.1:9091"
+                "local-poc", #TODO: let model owner specify this
             ], shell=False)
 
         self.get_server()
@@ -422,7 +428,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         if getattr(self, 'fim', False):
             superlink_process.terminate()
-            server_app_process.terminate()
+            flwr_run_process.terminate()
 
             superlink_process.wait()
-            server_app_process.wait()
+            flwr_run_process.wait()

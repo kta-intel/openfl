@@ -192,11 +192,11 @@ def initialize(
             **task_runner.tensor_dict_split_fn_kwargs,
         )
 
-    logger.warning(
-        f"Following parameters omitted from global initial model, "
-        f"local initialization will determine"
-        f" values: {list(holdout_params.keys())}"
-    )
+        logger.warning(
+            f"Following parameters omitted from global initial model, "
+            f"local initialization will determine"
+            f" values: {list(holdout_params.keys())}"
+        )
 
         model_snap = utils.construct_model_proto(
             tensor_dict=tensor_dict, round_number=0, tensor_pipe=tensor_pipe
