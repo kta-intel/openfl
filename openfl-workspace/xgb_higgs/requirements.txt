@@ -1,3 +1,4 @@
 modin[all]
 scikit-learn
 xgboost
+torch==2.3.1

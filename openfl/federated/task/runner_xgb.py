@@ -8,11 +8,15 @@ import json
 
 import numpy as np
 import xgboost as xgb
+import torch
+
+from pathlib import Path
 from sklearn.metrics import accuracy_score
 
 from openfl.federated.task.runner import TaskRunner
 from openfl.utilities import Metric, TensorKey, change_tags
 from openfl.utilities.split import split_tensor_dict_for_holdouts
+from openfl.utilities.tree_conversion import *
 
 
 def check_precision_loss(logger, converted_data, original_data):
@@ -341,16 +345,50 @@ class XGBoostTaskRunner(TaskRunner):
         filepath,
         **kwargs,
     ):
-        """Save XGB booster to file.
+        # """Save XGB booster to file.
 
-        Args:
-            filepath (str): Path to pickle file to be created by booster.save_model().
-            **kwargs: Additional parameters.
+        # Args:
+        #     filepath (str): Path to pickle file to be created by booster.save_model().
+        #     **kwargs: Additional parameters.
 
-        Returns:
-            None
-        """
-        self.bst.save_model(filepath)
+        # Returns:
+        #     None
+        # """
+        file_extension = Path(filepath).suffix
+
+        if file_extension == '.json':
+            self.bst.save_model(filepath)
+        elif file_extension in ['.pt', '.pth']:
+            tree_infos = self.bst.get_dump()
+            tree_parameters = [get_tree_parameters(tree_info) for tree_info in tree_infos]
+
+            n_features = self.bst.num_features()
+
+            net_parameters = [
+                        get_parameters_for_gemm_common(
+                            tree_param.lefts,
+                            tree_param.rights,
+                            tree_param.features,
+                            tree_param.thresholds,
+                            tree_param.values,
+                            n_features
+                        )
+                        for tree_param in tree_parameters
+                    ]
+
+            num_classes = self.bst.attributes().get("num_class")
+            if num_classes is not None:
+                num_classes = int(num_classes)
+            else:
+                num_classes = 2 
+
+            classes = [i for i in range(num_classes)]
+
+            embedded_nn_model = GEMMGBDTImpl(net_parameters, n_features, classes, decision_cond="<")
+            torch.save(embedded_nn_model, filepath)
+        else:
+            raise ValueError("Unsupported file extension: {}".format(file_extension))
+
 
     def train_(self, data) -> Metric:
         """
