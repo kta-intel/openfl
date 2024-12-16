@@ -163,9 +163,6 @@ class Collaborator:
         """Run the collaborator."""
         memory_details = []
         while True:
-            # if self.fim:
-            #     self.start_flower_client_connection()
-            # else:
             tasks, round_number, sleep_time, time_to_quit = self.get_tasks()
             if time_to_quit:
                 break
@@ -254,6 +251,7 @@ class Collaborator:
             func_name = self.task_config[task_name]["function"]
             kwargs = self.task_config[task_name]["kwargs"]
         if func_name=="start_client_adapter":
+            # TODO Need a major elegant and robust way to implement this
             if hasattr(self.task_runner, func_name):
                 method = getattr(self.task_runner, func_name)
                 if callable(method):
