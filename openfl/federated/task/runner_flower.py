@@ -18,9 +18,16 @@ class FlowerTaskRunner(TaskRunner):
         super().__init__(**kwargs)
         self.num_partitions = self.data_loader.get_node_configs()[0]
         self.partition_id = self.data_loader.get_node_configs()[1]
+
+        # Define a base port number
+        base_port = 5000
+
+        # Calculate the client port by adding the partition ID to the base port
+        self.client_port = base_port + self.partition_id
    
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         local_server_port = kwargs['local_server_port']
+        # local_server_port = 9092
 
         # Start the local gRPC server
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
@@ -42,7 +49,7 @@ class FlowerTaskRunner(TaskRunner):
             # set separate ports for each client if it is set as a local poc, otherwise it can be
             # whatever is automatically set by the system. Or we can add option to set port manually
             # or let it be automatically set
-            # TODO: temporarilty add client port to a collaborator unique yaml (i.e. data)
+            # TODO: temporarily add client port to a collaborator unique yaml (i.e. data)
             "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
             "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
         ]
