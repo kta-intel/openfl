@@ -136,6 +136,8 @@ class RetryOnRpcErrorClientInterceptor(
 
 
 def _atomic_connection(func):
+    # TODO: Need to investigate  how to handle atomic connection when 
+    # two requests are send in very quick succession
     def wrapper(self, *args, **kwargs):
         self.reconnect()
         response = func(self, *args, **kwargs)
@@ -490,14 +492,22 @@ class AggregatorGRPCClient:
     @_atomic_connection
     @_resend_data_on_reconnection
     def send_message_to_server(self, flower_message, collaborator_name):
+        """
+        Sends a message from the Flower SuperNode to the OpenFL server and returns the response.
+
+        Args:
+            flower_message: The message from the Flower client to be sent to the OpenFL server.
+            collaborator_name: The name of the collaborator.
+
+        Returns:
+            The response from the OpenFL server, converted back to a Flower message.
+        """
         self._set_header(collaborator_name)
         openfl_message = flower_to_openfl_message(flower_message, 
                                                   header=self.header)
         openfl_response = self.stub.PelicanDrop(openfl_message)
-        # Validate openFL response
         self.validate_response(openfl_response, collaborator_name)
         flower_response = openfl_to_flower_message(openfl_response)
-        # Validate flower response (deserialize message?)
         return flower_response
 
     def _get_trained_model(self, experiment_name, model_type):

@@ -9,8 +9,14 @@ import subprocess
 
 
 class FlowerTaskRunner(TaskRunner):
+    """
+    FlowerTaskRunner is a task runner that executes Flower SuperNode
+    to initialize the experiment from the client side
+    """
+
     def __init__(self, **kwargs):
-        """Initializes the FlowerTaskRunner object.
+        """
+        Initializes.
 
         Args:
             **kwargs: Additional parameters to pass to the functions.
@@ -24,10 +30,18 @@ class FlowerTaskRunner(TaskRunner):
 
         # Calculate the client port by adding the partition ID to the base port
         self.client_port = base_port + self.partition_id
-   
+
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
+        """
+        Starts the local gRPC server and the Flower SuperNode.
+
+        Args:
+            openfl_client: The OpenFL client instance used to communicate with the OpenFL server.
+            collaborator_name: The name of the collaborator.
+            **kwargs: Additional parameters, including 'local_server_port'.
+        """
         local_server_port = kwargs['local_server_port']
-        # local_server_port = 9092
+        # local_server_port = 9092 # note [kta-intel]: a direct connection to flower superlink
 
         # Start the local gRPC server
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
@@ -38,18 +52,17 @@ class FlowerTaskRunner(TaskRunner):
         server.start()
         print(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
 
-        # Start the Flower supernode in a subprocess
+        # Start the Flower SuperNode in a subprocess
         command = [
             "flower-supernode",
             "--insecure",
             "--grpc-adapter",
-            "--superlink", f"127.0.0.1:{local_server_port}", # This should connect to local gRPC server
+            "--superlink", f"127.0.0.1:{local_server_port}", #  note [kta-intel]: this connects to local gRPC server
             # TODO: you must specify separate client ports when running multiple super nodes
             # on a single machine (i.e. a local poc). We need to add ability to automatically
             # set separate ports for each client if it is set as a local poc, otherwise it can be
             # whatever is automatically set by the system. Or we can add option to set port manually
             # or let it be automatically set
-            # TODO: temporarily add client port to a collaborator unique yaml (i.e. data)
             "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
             "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
         ]

@@ -88,8 +88,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         self.fim = fim 
         if self.fim:
-            # TODO Let user specify?
-            superlink_address = '127.0.0.1:9092' # NTS: This is the address that the Flower server will be listening on
+            # TODO: Users should have the option to specifc this address or have it default
+            # note [kta-intel]: This is the address that the Flower server will be listening on
+            superlink_address = '127.0.0.1:9092'
             self.local_grpc_client = LocalGRPCClient(superlink_address)  # Initialize the local gRPC client for Flower
         else:
             self.local_grpc_client = None
@@ -195,9 +196,6 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         Returns:
             aggregator_pb2.GetTasksResponse: The response to the request.
         """
-        # if self.fim:
-        #     context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
-
         self.validate_collaborator(request, context)
         self.check_request(request)
         collaborator_name = request.header.sender
@@ -333,13 +331,11 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         if not self.fim:
             context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in framework interopability mode.")
 
-        #TODO: local gRPC should have it's own verification when receiving and converting flower messages
         self.validate_collaborator(request, context)
         self.check_request(request)
         collaborator_name = request.header.sender
 
         # Forward the incoming OpenFL message to the local gRPC client
-        print(f"OpenFL Server: Received message from OpenFL client, sending message to Flower server")
         return self.local_grpc_client.send_receive(request, header=self.get_header(collaborator_name))
 
     def get_server(self):
@@ -352,7 +348,6 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         Returns:
             grpc.Server: The gRPC server.
         """
-        # TODO: Need to launch superlink and flower server app somewhere
         self.server = server(ThreadPoolExecutor(max_workers=cpu_count()), options=channel_options)
 
         aggregator_pb2_grpc.add_AggregatorServicer_to_server(self, self.server)
@@ -396,13 +391,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
                 "flower-superlink",
                 "--insecure",
                 "--fleet-api-type", "grpc-adapter",
-                # "--fleet-api-address", "127.0.0.1:9093",
-                # "--driver-api-address", "127.0.0.1:9091",
-                # TODO, double check the addresses to make sure they are
-                # interacting properly
-                "--serverappio-api-address", "127.0.0.1:9091", # NTS: ?
-                "--fleet-api-address",  "127.0.0.1:9092", # NTS: local gRPC client will connect here
-                "--exec-api-address", "127.0.0.1:9093", # NTS: port for server-app toml
+                "--serverappio-api-address", "127.0.0.1:9091",
+                "--fleet-api-address",  "127.0.0.1:9092", # note [kta-intel]: local gRPC client will connect here
+                "--exec-api-address", "127.0.0.1:9093", # note [kta-intel]: port for server-app toml
             ], shell=False)
 
             # Start the Flower server app in a subprocess
