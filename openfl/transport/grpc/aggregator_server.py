@@ -14,7 +14,6 @@ from grpc import StatusCode, server, ssl_server_credentials
 
 from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
-from openfl.transport.grpc.fim.flower.local_grpc_client import LocalGRPCClient
 from openfl.utilities import check_equal, check_is_in
 
 import subprocess
@@ -84,14 +83,10 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         self.private_key = private_key
         self.server = None
         self.server_credentials = None
-
         self.use_flex = self.aggregator.is_flex_available()
+
         if self.use_flex:
-            # TODO: Users should have the option to specifc this address or have it default
-            # note [kta-intel]: This is the address that the Flower server will be listening on
-            # superlink_address = '127.0.0.1:9092'
-            superlink_address = self.aggregator.get_flex_address()
-            self.local_grpc_client = LocalGRPCClient(superlink_address)  # Initialize the local gRPC client for Flower
+            self.local_grpc_client =  self.aggregator.get_local_grpc_client()  # Initialize the local gRPC client
         else:
             self.local_grpc_client = None
 

@@ -1,4 +1,5 @@
 from openfl.component.interoperability.flex import FederatedLearningExchange
+from openfl.transport.grpc.fim.flower.local_grpc_client import LocalGRPCClient
 
 class FLEXFlower(FederatedLearningExchange):
     """
@@ -8,47 +9,41 @@ class FLEXFlower(FederatedLearningExchange):
 
     def __init__(self, superlink_params: dict, **kwargs):
         """
-        Initialize FLEXFlower by building the server command from settings.
+        Initialize FLEXFlower by building the server command from the superlink_params.
         Args:
-            settings (dict): A dictionary of Flower server settings.
+            superlink_params (dict): A dictionary of Flower server settings.
         """
-        self._settings = superlink_params
-        command = self._build_command(superlink_params)
+        self.superlink_params = superlink_params
+        command = self._build_command()
         super().__init__(command)
+        
+        flex_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
+        self.local_grpc_client = LocalGRPCClient(flex_address)
 
-    def _build_command(self, superlink_params: dict) -> list[str]:
+    def _build_command(self) -> list[str]:
         """
         Build the Flower server command based on settings.
         Args:
-            settings (dict): Settings to configure the Flower server.
+            superlink_params (dict): Settings to configure the Flower server.
         Returns:
             list[str]: A list representing the Flower server start command.
         """
         command = ["flower-superlink", "--fleet-api-type", "grpc-adapter"]
 
-        if "insecure" in superlink_params:
-            if superlink_params["insecure"]:
+        if "insecure" in self.superlink_params:
+            if self.superlink_params["insecure"]:
                 command += ["--insecure"]
 
-        if "serverappio-api-address" in superlink_params:
-            command += ["--serverappio-api-address", str(superlink_params["serverappio-api-address"])]
+        if "serverappio-api-address" in self.superlink_params:
+            command += ["--serverappio-api-address", str(self.superlink_params["serverappio-api-address"])]
             # flwr default: 0.0.0.0:9091
 
-        if "fleet-api-address" in superlink_params:
-            command += ["--fleet-api-address", str(superlink_params["fleet-api-address"])]
+        if "fleet-api-address" in self.superlink_params:
+            command += ["--fleet-api-address", str(self.superlink_params["fleet-api-address"])]
             # flwr default: 0.0.0.0:9092
 
-        if "exec-api-address" in superlink_params:
-            command += ["--exec-api-address", str(superlink_params["exec-api-address"])]
+        if "exec-api-address" in self.superlink_params:
+            command += ["--exec-api-address", str(self.superlink_params["exec-api-address"])]
             # flwr default: 0.0.0.0:9093
 
         return command
-
-    @property
-    def address(self) -> str:
-        """
-        Get the fleet API address from the settings.
-        Returns:
-            str: The fleet API address.
-        """
-        return self._settings.get("fleet-api-address", "0.0.0.0:9092")

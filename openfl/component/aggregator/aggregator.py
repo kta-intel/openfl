@@ -702,10 +702,10 @@ class Aggregator:
             raise RuntimeError("Federated Learning exchange as not been enabled.")
         return self.flex.stop()
 
-    def get_flex_address(self):
+    def get_local_grpc_client(self):
         if not self.is_flex_available():
             raise RuntimeError("Federated Learning exchange as not been enabled.")
-        return self.flex.address
+        return self.flex.local_grpc_client
 
     def _end_of_round_with_stragglers_check(self):
         """
