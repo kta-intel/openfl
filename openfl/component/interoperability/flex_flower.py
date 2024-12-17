@@ -1,5 +1,5 @@
 from openfl.component.interoperability.flex import FederatedLearningExchange
-from openfl.transport.grpc.fim.flower.local_grpc_client import LocalGRPCClient
+from openfl.transport.grpc.flex.flower.local_grpc_client import LocalGRPCClient
 
 class FLEXFlower(FederatedLearningExchange):
     """

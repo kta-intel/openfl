@@ -13,7 +13,7 @@ import grpc
 from openfl.pipelines import NoCompressionPipeline
 from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
-from openfl.transport.grpc.fim.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
+from openfl.transport.grpc.flex.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 from openfl.utilities import check_equal
 
 
