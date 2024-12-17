@@ -53,7 +53,6 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         root_certificate=None,
         certificate=None,
         private_key=None,
-        fim=False,  # Add a flag for Flower transport mode
         **kwargs,
     ):
         """
@@ -72,7 +71,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
                 TLS connection.
             private_key (str): The path to the server's private key for the
                 TLS connection.
-            fim (bool): whether to use framework interopability mode
+            use_flex (bool): whether to use framework interopability mode
             **kwargs: Additional keyword arguments.
         """
         print(f"{use_tls=}")
@@ -86,11 +85,12 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         self.server = None
         self.server_credentials = None
 
-        self.fim = fim 
-        if self.fim:
+        self.use_flex = self.aggregator.is_flex_available()
+        if self.use_flex:
             # TODO: Users should have the option to specifc this address or have it default
             # note [kta-intel]: This is the address that the Flower server will be listening on
-            superlink_address = '127.0.0.1:9092'
+            # superlink_address = '127.0.0.1:9092'
+            superlink_address = self.aggregator.get_flex_address()
             self.local_grpc_client = LocalGRPCClient(superlink_address)  # Initialize the local gRPC client for Flower
         else:
             self.local_grpc_client = None
@@ -247,7 +247,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.GetAggregatedTensorResponse: The response to the
                 request.
         """
-        if self.fim:
+        if self.use_flex:
             context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
 
         self.validate_collaborator(request, context)
@@ -289,7 +289,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.SendLocalTaskResultsResponse: The response to the
                 request.
         """
-        if self.fim:
+        if self.use_flex:
             context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
 
         try:
@@ -328,8 +328,8 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.PelicanDrop: The response to the
             request.
         """
-        if not self.fim:
-            context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in framework interopability mode.")
+        if not self.use_flex:
+            context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in federated interopability mode.")
 
         self.validate_collaborator(request, context)
         self.check_request(request)
@@ -385,24 +385,18 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         jobs havebeen sent.
 
         """
-        if getattr(self, 'fim', False):
-            # Start the Flower superlink in a subprocess
-            superlink_process = subprocess.Popen([
-                "flower-superlink",
-                "--insecure",
-                "--fleet-api-type", "grpc-adapter",
-                "--serverappio-api-address", "127.0.0.1:9091",
-                "--fleet-api-address",  "127.0.0.1:9092", # note [kta-intel]: local gRPC client will connect here
-                "--exec-api-address", "127.0.0.1:9093", # note [kta-intel]: port for server-app toml
-            ], shell=False)
+        # if getattr(self, 'use_flex', False):
 
-            # Start the Flower server app in a subprocess
-            flwr_run_process = subprocess.Popen([
-                "flwr",
-                "run",
-                "./app-pytorch",
-                "local-poc", #TODO: let model owner specify this
-            ], shell=False)
+        #     # Start the Flower server app in a subprocess
+        #     flwr_run_process = subprocess.Popen([
+        #         "flwr",
+        #         "run",
+        #         "./app-pytorch",
+        #         "local-poc", #TODO: let model owner specify this
+        #     ], shell=False)
+
+        if self.use_flex:
+            self.aggregator.start_flex()
 
         self.get_server()
 
@@ -417,9 +411,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         self.server.stop(0)
 
-        if getattr(self, 'fim', False):
-            superlink_process.terminate()
-            flwr_run_process.terminate()
+        if self.use_flex:
+            self.aggregator.stop_flex()
 
-            superlink_process.wait()
-            flwr_run_process.wait()
+        # if getattr(self, 'use_flex', False):
+        #     flwr_run_process.terminate()
+        #     flwr_run_process.wait()

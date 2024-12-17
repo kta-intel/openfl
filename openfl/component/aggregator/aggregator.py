@@ -17,6 +17,7 @@ from openfl.protocols import base_pb2, utils
 from openfl.utilities import TaskResultKey, TensorKey, change_tags
 from openfl.utilities.logs import get_memory_usage, write_metric
 
+import subprocess
 
 class Aggregator:
     """An Aggregator is the central node in federated learning.
@@ -70,6 +71,7 @@ class Aggregator:
         best_state_path,
         last_state_path,
         assigner,
+        flex,
         use_delta_updates=True,
         straggler_handling_policy=None,
         rounds_to_train=256,
@@ -195,6 +197,8 @@ class Aggregator:
         self.lock = Lock()
 
         self.use_delta_updates = use_delta_updates
+
+        self.flex = flex
 
     def _load_initial_tensors(self):
         """Load all of the tensors required to begin federated learning.
@@ -684,6 +688,24 @@ class Aggregator:
             self._is_collaborator_done(collaborator_name, round_number)
 
             self._end_of_round_with_stragglers_check()
+
+    def is_flex_available(self):
+        return self.flex is not None
+
+    def start_flex(self):
+        if not self.is_flex_available():
+            raise RuntimeError("Federated Learning exchange as not been enabled.")
+        return self.flex.start()
+
+    def stop_flex(self):
+        if not self.is_flex_available():
+            raise RuntimeError("Federated Learning exchange as not been enabled.")
+        return self.flex.stop()
+
+    def get_flex_address(self):
+        if not self.is_flex_available():
+            raise RuntimeError("Federated Learning exchange as not been enabled.")
+        return self.flex.address
 
     def _end_of_round_with_stragglers_check(self):
         """

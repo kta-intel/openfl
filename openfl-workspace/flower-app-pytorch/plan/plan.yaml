@@ -10,6 +10,17 @@ aggregator :
     last_state_path : null
     rounds_to_train : 1
 
+flex : 
+  defaults : plan/defaults/flex.yaml
+  template : openfl.component.FLEXFlower
+  enable : True
+  settings :
+    superlink_params:
+      insecure : True
+      serverappio-api-address : 127.0.0.1:9091
+      fleet-api-address :  127.0.0.1:9092 # note [kta-intel]: local gRPC client will connect here
+      exec-api-address : 127.0.0.1:9093 # note [kta-intel]: port for server-app toml
+
 collaborator :
   defaults : plan/defaults/collaborator.yaml
   template : openfl.component.Collaborator

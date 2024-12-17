@@ -16,3 +16,6 @@ from openfl.component.straggler_handling_functions.percentage_based_straggler_ha
 from openfl.component.straggler_handling_functions.straggler_handling_function import (
     StragglerHandlingPolicy,
 )
+from openfl.component.interoperability.flex import FederatedLearningExchange
+from openfl.component.interoperability.flex_flower import FLEXFlower
+
