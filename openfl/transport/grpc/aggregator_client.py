@@ -503,6 +503,7 @@ class AggregatorGRPCClient:
             The response from the OpenFL server, converted back to a Flower message.
         """
         self._set_header(collaborator_name)
+        #TODO: use a general to/from openfl_message function with "add_header" option, do the message conversion before calling send_message_to_server
         openfl_message = flower_to_openfl_message(flower_message, 
                                                   header=self.header)
         openfl_response = self.stub.PelicanDrop(openfl_message)

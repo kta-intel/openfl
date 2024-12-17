@@ -52,6 +52,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         while True:
             request, response_queue = self.request_queue.get()
             # Send request to the OpenFL server
+            # TODO: do message conversions here
             flower_response = self.openfl_client.send_message_to_server(request, self.collaborator_name)
             # Send response to Flower client
             response_queue.put(flower_response)

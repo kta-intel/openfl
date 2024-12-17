@@ -14,6 +14,7 @@ class FederatedLearningExchange:
         Args:
             command (list[str]): The command to run the server as a subprocess.
         """
+        self.local_grpc_client = None
         self._command = command
         self._process = None
 
@@ -40,3 +41,10 @@ class FederatedLearningExchange:
             logger.info("[FLEX] Subprocess stopped.")
         else:
             logger.info("[FLEX] No subprocess is currently running.")
+
+
+    def get_local_grpc_client(self):
+        """
+        Get the local gRPC client.
+        """
+        return self.local_grpc_client
