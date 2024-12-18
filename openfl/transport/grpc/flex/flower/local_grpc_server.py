@@ -38,10 +38,8 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         Returns:
             The response from the OpenFL server.
         """
-        # TODO: Add verification steps for messages coming from Flower clients
         response_queue = queue.Queue()
         self.request_queue.put((request, response_queue))
-        # TODO: Add verification steps for messages coming from OpenFL transport
         return response_queue.get()
 
     def process_queue(self):
@@ -53,7 +51,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         while True:
             request, response_queue = self.request_queue.get()
             request = flower_to_openfl_message(request, header=None)
-            
+
             # Send request to the OpenFL server
             openfl_response = self.openfl_client.send_message_to_server(request, self.collaborator_name)
 

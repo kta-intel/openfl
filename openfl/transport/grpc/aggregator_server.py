@@ -380,15 +380,6 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         jobs havebeen sent.
 
         """
-        # if getattr(self, 'use_flex', False):
-
-        #     # Start the Flower server app in a subprocess
-        #     flwr_run_process = subprocess.Popen([
-        #         "flwr",
-        #         "run",
-        #         "./app-pytorch",
-        #         "local-poc", #TODO: let model owner specify this
-        #     ], shell=False)
 
         if self.use_flex:
             self.aggregator.start_flex()
@@ -408,7 +399,3 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         if self.use_flex:
             self.aggregator.stop_flex()
-
-        # if getattr(self, 'use_flex', False):
-        #     flwr_run_process.terminate()
-        #     flwr_run_process.wait()

@@ -29,9 +29,7 @@ class LocalGRPCClient:
         Returns:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
-        # TODO: Add verification steps for messages coming from OpenFL transport
         flower_message = openfl_to_flower_message(openfl_message)
         flower_response = self.superlink_stub.SendReceive(flower_message)
         openfl_response = flower_to_openfl_message(flower_response, header=header)
-        # TODO: Add verification steps for messages coming from Flower server
         return openfl_response

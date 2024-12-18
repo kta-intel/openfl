@@ -1,6 +1,6 @@
 from flwr.proto import grpcadapter_pb2
 from openfl.protocols  import aggregator_pb2
-# from deserialize_message import deserialize_flower_message
+# from openfl.transport.grpc.flex.flower.deserialize_message import deserialize_flower_message
 
 def flower_to_openfl_message(flower_message, header=None):
     """Convert a Flower MessageContainer to an OpenFL OpenFLMessage."""
@@ -8,6 +8,7 @@ def flower_to_openfl_message(flower_message, header=None):
         # If the input is already an OpenFL message, return it as-is
         return flower_message
     else:
+        # TODO: Add verification steps for messages coming from Flower entities
         """Convert a Flower MessageContainer to an OpenFL message."""
         # Create the OpenFL message
         openfl_message = aggregator_pb2.DropPod()
