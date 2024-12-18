@@ -56,7 +56,7 @@ def collaborator(context):
     required=False,
     help="The data set/shard configuration file [plan/data.yaml]",
     default="plan/data.yaml",
-    type=ClickPath(exists=False),
+    type=ClickPath(exists=True),
 )
 @option(
     "-n",
