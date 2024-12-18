@@ -13,7 +13,6 @@ import grpc
 from openfl.pipelines import NoCompressionPipeline
 from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
-from openfl.transport.grpc.flex.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 from openfl.utilities import check_equal
 
 
@@ -491,25 +490,22 @@ class AggregatorGRPCClient:
 
     @_atomic_connection
     @_resend_data_on_reconnection
-    def send_message_to_server(self, flower_message, collaborator_name):
+    def send_message_to_server(self, openfl_message, collaborator_name):
         """
-        Sends a message from the Flower SuperNode to the OpenFL server and returns the response.
+        Forwards a converted message from the local GRPC server (LGS) to the OpenFL server and returns the response.
 
         Args:
-            flower_message: The message from the Flower client to be sent to the OpenFL server.
+            openfl_message: The converted message from the LGS to be sent to the OpenFL server.
             collaborator_name: The name of the collaborator.
 
         Returns:
-            The response from the OpenFL server, converted back to a Flower message.
+            The response from the OpenFL server
         """
         self._set_header(collaborator_name)
-        #TODO: use a general to/from openfl_message function with "add_header" option, do the message conversion before calling send_message_to_server
-        openfl_message = flower_to_openfl_message(flower_message, 
-                                                  header=self.header)
+        openfl_message.header.CopyFrom(self.header)
         openfl_response = self.stub.PelicanDrop(openfl_message)
         self.validate_response(openfl_response, collaborator_name)
-        flower_response = openfl_to_flower_message(openfl_response)
-        return flower_response
+        return openfl_response
 
     def _get_trained_model(self, experiment_name, model_type):
         """Get trained model RPC.

@@ -1,6 +1,7 @@
 import threading
 import queue
 from flwr.proto import grpcadapter_pb2_grpc
+from openfl.transport.grpc.flex.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 
 class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
     """
@@ -51,9 +52,12 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         """
         while True:
             request, response_queue = self.request_queue.get()
+            request = flower_to_openfl_message(request, header=None)
+            
             # Send request to the OpenFL server
-            # TODO: do message conversions here
-            flower_response = self.openfl_client.send_message_to_server(request, self.collaborator_name)
+            openfl_response = self.openfl_client.send_message_to_server(request, self.collaborator_name)
+
             # Send response to Flower client
+            flower_response = openfl_to_flower_message(openfl_response)
             response_queue.put(flower_response)
             self.request_queue.task_done()
