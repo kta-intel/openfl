@@ -251,7 +251,8 @@ class Collaborator:
             func_name = self.task_config[task_name]["function"]
             kwargs = self.task_config[task_name]["kwargs"]
         if func_name=="start_client_adapter":
-            # TODO Need a major elegant and robust way to implement this
+            # TODO: Need to determine a more general way to handle this in order to enable
+            # additional tasks to be added to be added to FLEX
             if hasattr(self.task_runner, func_name):
                 method = getattr(self.task_runner, func_name)
                 if callable(method):

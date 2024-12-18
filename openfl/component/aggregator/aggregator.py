@@ -137,6 +137,7 @@ class Aggregator:
         self.uuid = aggregator_uuid
         self.federation_uuid = federation_uuid
         self.assigner = assigner
+        self.flex = flex
         self.quit_job_sent_to = []
 
         self.tensor_db = TensorDB()
@@ -176,11 +177,12 @@ class Aggregator:
                 tensor_pipe=self.compression_pipeline,
             )
         else:
-            if self.init_state_path:
+            if self.flex:
+                # The model definition will be handled by the respective framework
+                self.model = {}
+            else:
                 self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
                 self._load_initial_tensors()  # keys are TensorKeys
-            else:
-                self.model = {}
 
         self.collaborator_tensor_results = {}  # {TensorKey: nparray}}
 
@@ -198,7 +200,6 @@ class Aggregator:
 
         self.use_delta_updates = use_delta_updates
 
-        self.flex = flex
 
     def _load_initial_tensors(self):
         """Load all of the tensors required to begin federated learning.

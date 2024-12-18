@@ -56,7 +56,7 @@ def plan(context):
     required=False,
     help="Authorized collaborator list [plan/cols.yaml]",
     default="plan/cols.yaml",
-    type=ClickPath(exists=False),
+    type=ClickPath(exists=True),
 )
 @option(
     "-d",
@@ -64,7 +64,7 @@ def plan(context):
     required=False,
     help="The data set/shard configuration file [plan/data.yaml]",
     default="plan/data.yaml",
-    type=ClickPath(exists=False),
+    type=ClickPath(exists=True),
 )
 @option(
     "-a",
@@ -95,13 +95,6 @@ def plan(context):
     help="Install packages listed under 'requirements.txt'. True/False [Default: True]",
     default=True,
 )
-@option(
-    "-fim",
-    "--framework_interoperability_mode",
-    required=False,
-    help="For interoperability with other FL frameworks. True/False [Default: True]",
-    default=False,
-)
 def initialize(
     context,
     plan_config,
@@ -111,7 +104,6 @@ def initialize(
     input_shape,
     gandlf_config,
     install_reqs,
-    framework_interoperability_mode
 ):
     """Initialize Data Science plan.
 
@@ -172,7 +164,9 @@ def initialize(
         gandlf_config_path=gandlf_config,
     )
 
-    if not framework_interoperability_mode:
+    if 'flex' in plan.config:
+        logger.info("FLEX enabled: %s", plan.config['flex'])
+    else:
         init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
 
         # This is needed to bypass data being locally available

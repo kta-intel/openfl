@@ -5,6 +5,7 @@ from multiprocessing import cpu_count
 from openfl.federated.task.runner import TaskRunner
 from openfl.transport.grpc.flex.flower.local_grpc_server import LocalGRPCServer
 import subprocess
+from logging import getLogger
 
 
 class FlowerTaskRunner(TaskRunner):
@@ -21,6 +22,7 @@ class FlowerTaskRunner(TaskRunner):
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
+        self.logger = getLogger(__name__)
         self.num_partitions = self.data_loader.get_node_configs()[0]
         self.partition_id = self.data_loader.get_node_configs()[1]
 
@@ -40,7 +42,6 @@ class FlowerTaskRunner(TaskRunner):
             **kwargs: Additional parameters, including 'local_server_port'.
         """
         local_server_port = kwargs['local_server_port']
-        # local_server_port = 9092 # note [kta-intel]: a direct connection to flower superlink
 
         # Start the local gRPC server
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
@@ -49,7 +50,7 @@ class FlowerTaskRunner(TaskRunner):
         # TODO: add restrictions
         server.add_insecure_port(f'[::]:{local_server_port}')
         server.start()
-        print(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
+        self.logger.info(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
 
         # Start the Flower SuperNode in a subprocess
         command = [
@@ -57,11 +58,6 @@ class FlowerTaskRunner(TaskRunner):
             "--insecure",
             "--grpc-adapter",
             "--superlink", f"127.0.0.1:{local_server_port}", #  note [kta-intel]: this connects to local gRPC server
-            # TODO: you must specify separate client ports when running multiple super nodes
-            # on a single machine (i.e. a local poc). We need to add ability to automatically
-            # set separate ports for each client if it is set as a local poc, otherwise it can be
-            # whatever is automatically set by the system. Or we can add option to set port manually
-            # or let it be automatically set
             "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
             "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
         ]

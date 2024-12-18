@@ -1,3 +1,4 @@
+import subprocess
 from openfl.component.interoperability.flex import FederatedLearningExchange
 from openfl.transport.grpc.flex.flower.local_grpc_client import LocalGRPCClient
 
@@ -7,22 +8,27 @@ class FLEXFlower(FederatedLearningExchange):
     Responsible for generating the Flower server command.
     """
 
-    def __init__(self, superlink_params: dict, **kwargs):
+    def __init__(self, superlink_params: dict, flwr_run_params: dict = None, **kwargs):
         """
         Initialize FLEXFlower by building the server command from the superlink_params.
         Args:
             superlink_params (dict): A dictionary of Flower server settings.
+            flwr_run_params (dict, optional): A dictionary containing the Flower run parameters. Defaults to None.
         """
         self.superlink_params = superlink_params
+        self.flwr_run_params = flwr_run_params
         command = self._build_command()
-        super().__init__(command)
+        super().__init__(command, component_name="Flower")
         
         flex_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
         self.local_grpc_client = LocalGRPCClient(flex_address)
+        
+        self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
+        self.flwr_run_process = None
 
     def _build_command(self) -> list[str]:
         """
-        Build the Flower server command based on settings.
+        Start the Flower SuperLink based on settings.
         Args:
             superlink_params (dict): Settings to configure the Flower server.
         Returns:
@@ -47,3 +53,45 @@ class FLEXFlower(FederatedLearningExchange):
             # flwr default: 0.0.0.0:9093
 
         return command
+
+    def _build_flwr_run_command(self) -> list[str]:
+        """
+        Build the `flwr run` command to run the Flower application.
+        Returns:
+            list[str]: A list representing the flwr_run command.
+        """
+        flwr_app_name = self.flwr_run_params.get("flwr_app_name")
+        federation_name = self.flwr_run_params.get("federation_name")
+        
+        command = ["flwr", "run", f"./{flwr_app_name}"]
+        if federation_name:
+            command.append(federation_name)
+        return command
+
+    def start(self):
+        """
+        Start the `flower-superlink` and `flwr run` subprocesses with the provided commands.
+        """
+        super().start()
+        
+        if self.flwr_run_command and self.flwr_run_process is None:
+            self.logger.info(f"[FLEX] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
+            self.flwr_run_process = subprocess.Popen(self.flwr_run_command)
+            self.logger.info(f"[FLEX] `flwr run` subprocess started with PID: {self.flwr_run_process.pid}")
+        elif self.flwr_run_process:
+            self.logger.info("[FLEX] `flwr run` subprocess is already running.")
+
+    def stop(self):
+        """
+        Stop the `flower-superlink` and `flwr run` subprocesses if they are running.
+        """
+        super().stop()
+        
+        if self.flwr_run_process:
+            self.logger.info(f"[FLEX] Stopping `flwr run` subprocess with PID: {self.flwr_run_process.pid}...")
+            self.flwr_run_process.terminate()
+            self.flwr_run_process.wait()
+            self.flwr_run_process = None
+            self.logger.info("[FLEX] `flwr run` subprocess stopped.")
+        else:
+            self.logger.info("[FLEX] No `flwr run` subprocess is currently running.")

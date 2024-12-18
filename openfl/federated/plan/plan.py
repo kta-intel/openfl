@@ -343,13 +343,9 @@ class Plan:
     
     def get_flex(self):
         """Get federated learning exchange object."""
-        defaults = self.config.get(
-            "flex",
-            {TEMPLATE: "openfl.components.FederatedLearningExchange", SETTINGS: {}},
-        )
+        defaults = self.config.get("flex")
 
-        if self.flex_ is None and defaults.get('enable', False):
-            defaults = {k: v for k, v in defaults.items() if k != 'enable'}
+        if self.flex_ is None and defaults:
             self.flex_ = Plan.build(**defaults)
         else:
             self.flex_ = None
@@ -722,9 +718,6 @@ class Plan:
         server_args["private_key"] = private_key
 
         server_args["aggregator"] = self.get_aggregator()
-
-        #TODO have this set in self.config["network"]
-        # server_args["fim"] = True
 
         if self.server_ is None:
             self.server_ = AggregatorGRPCServer(**server_args)

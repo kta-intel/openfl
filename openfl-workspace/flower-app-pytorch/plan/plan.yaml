@@ -5,27 +5,24 @@ aggregator :
   defaults : plan/defaults/aggregator.yaml
   template : openfl.component.Aggregator
   settings :
-    init_state_path : null
-    best_state_path : null
-    last_state_path : null
     rounds_to_train : 1
 
 flex : 
   defaults : plan/defaults/flex.yaml
   template : openfl.component.FLEXFlower
-  enable : True
   settings :
-    superlink_params:
+    superlink_params :
       insecure : True
       serverappio-api-address : 127.0.0.1:9091
       fleet-api-address :  127.0.0.1:9092 # note [kta-intel]: local gRPC client will connect here
       exec-api-address : 127.0.0.1:9093 # note [kta-intel]: port for server-app toml
+    flwr_run_params : # remove this to run flwr as a separate process
+      flwr_app_name : "app-pytorch"
+      federation_name : "local-poc"
 
 collaborator :
   defaults : plan/defaults/collaborator.yaml
   template : openfl.component.Collaborator
-  settings :
-    {}
 
 data_loader :
   defaults : plan/defaults/data_loader.yaml
@@ -36,26 +33,21 @@ data_loader :
 task_runner :
   defaults : plan/defaults/task_runner.yaml
   template : openfl.federated.task.runner_flower.FlowerTaskRunner
-  settings :
-    {}
 
 network :
   defaults : plan/defaults/network.yaml
-  settings :
-    fim : True
 
 assigner :
   defaults : plan/defaults/assigner.yaml
-  template : openfl.component.RandomGroupedAssigner
+  template : openfl.component.FLEXAssigner
   settings :
-    task_groups  :
-      - name       : flower_adapter
-        percentage : 1.0
-        tasks      :
+    task_groups :
+      - name  : FLEX_Flower
+        tasks : 
           - start_client_adapter
 
 tasks :
-  defaults : plan/defaults/tasks_flower.yaml
+  defaults : plan/defaults/tasks_flex.yaml
 
 compression_pipeline :
   defaults : plan/defaults/compression_pipeline.yaml
