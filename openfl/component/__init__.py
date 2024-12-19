@@ -1,6 +1,7 @@
 # Copyright 2020-2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+from importlib import util
 
 from openfl.component.aggregator.aggregator import Aggregator
 from openfl.component.assigner.assigner import Assigner
@@ -18,5 +19,7 @@ from openfl.component.straggler_handling_functions.straggler_handling_function i
     StragglerHandlingPolicy,
 )
 from openfl.component.interoperability.flex import FederatedLearningExchange
-from openfl.component.interoperability.flex_flower import FLEXFlower
+
+if util.find_spec("flwr") is not None:
+    from openfl.component.interoperability.flex_flower import FLEXFlower
 

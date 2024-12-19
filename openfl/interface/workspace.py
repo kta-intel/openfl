@@ -138,6 +138,7 @@ def create(prefix, template):
     requirements_filename = "requirements.txt"
 
     if os.path.isfile(f"{str(prefix)}/{requirements_filename}"):
+        os.chdir(prefix)
         check_call(
             [
                 executable,
