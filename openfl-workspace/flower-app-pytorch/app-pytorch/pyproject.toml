@@ -10,8 +10,8 @@ license = "Apache-2.0"
 dependencies = [
     "flwr-nightly==1.14.0.dev20241205",
     "flwr-datasets[vision]>=0.3.0",
-    "torch==2.2.1",
-    "torchvision==0.17.1",
+    "torch==2.3.1",
+    "torchvision==0.18.1",
 ]
 
 [tool.hatch.build.targets.wheel]
