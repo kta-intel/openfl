@@ -1,4 +1,5 @@
 import subprocess
+import psutil
 from logging import getLogger
 
 class FederatedLearningExchange:
@@ -36,6 +37,16 @@ class FederatedLearningExchange:
         """
         if self._process:
             self.logger.info(f"[FLEX] Stopping subprocess with PID: {self._process.pid}...")
+            # Use psutil to find and terminate child processes
+            parent = psutil.Process(self._process.pid)
+            children = parent.children(recursive=True)
+            for child in children:
+                self.logger.info(f"[FLEX] Stopping child process with PID: {child.pid}...")
+                child.terminate()
+            _, still_alive = psutil.wait_procs(children, timeout=1)
+            for p in still_alive:
+                p.kill()
+            # Terminate the main process
             self._process.terminate()
             try:
                 self._process.wait(timeout=5)

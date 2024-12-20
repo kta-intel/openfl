@@ -74,9 +74,13 @@ class FLEXFlower(FederatedLearningExchange):
         """
         super().start()
         
-        if self.flwr_run_command and self.flwr_run_process is None:
+        if self.flwr_run_command:
             self.logger.info(f"[FLEX] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
             self.flwr_run_process = subprocess.Popen(self.flwr_run_command)
-            self.logger.info(f"[FLEX] `flwr run` subprocess started with PID: {self.flwr_run_process.pid}")
-        elif self.flwr_run_process:
-            self.logger.info("[FLEX] `flwr run` subprocess is already running.")
+
+    def stop(self):
+        """
+        Stop the `flower-superlink` subprocess.
+        """
+        # TODO : Add logic to maintain a long-lived federation -> might be better from the taskrunner
+        super().stop()
