@@ -39,6 +39,8 @@ class FLEXFlower(FederatedLearningExchange):
         if "insecure" in self.superlink_params:
             if self.superlink_params["insecure"]:
                 command += ["--insecure"]
+        else:
+            command += ["--insecure"]
 
         if "serverappio-api-address" in self.superlink_params:
             command += ["--serverappio-api-address", str(self.superlink_params["serverappio-api-address"])]
