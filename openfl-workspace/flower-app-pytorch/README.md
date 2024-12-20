@@ -17,6 +17,16 @@ In addition, there are options to run the `SuperLink` and `SuperNode` as [long-l
 
 ## Getting Started
 
+### Install OpenFL
+
+Ensure that OpenFL is installed
+```sh
+pip install virtualenv
+virtualenv ./venv
+source ./venv/bin/activate
+pip install openfl
+```
+
 ### Create a Workspace
 
 Start by creating a workspace:
