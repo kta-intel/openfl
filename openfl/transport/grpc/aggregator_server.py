@@ -284,8 +284,8 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.SendLocalTaskResultsResponse: The response to the
                 request.
         """
-        if self.use_flex:
-            context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
+        # if self.use_flex:
+        #     context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
 
         try:
             proto = aggregator_pb2.TaskResults()
@@ -395,7 +395,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         except KeyboardInterrupt:
             pass
 
-        self.server.stop(0)
-
         if self.use_flex:
             self.aggregator.stop_flex()
+
+        self.server.stop(0)

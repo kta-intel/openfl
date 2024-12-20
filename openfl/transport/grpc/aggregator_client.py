@@ -457,8 +457,8 @@ class AggregatorGRPCClient:
         collaborator_name,
         round_number,
         task_name,
-        data_size,
-        named_tensors,
+        data_size=None,
+        named_tensors=None,
     ):
         """
         Send task results to the aggregator.

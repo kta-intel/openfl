@@ -257,6 +257,9 @@ class Collaborator:
                 method = getattr(self.task_runner, func_name)
                 if callable(method):
                     method(self.client, self.collaborator_name, **kwargs) 
+                    # TODO: better to use self.send_task_results(global_output_tensor_dict, round_number, task_name)
+                    # maybe set global_output_tensor to empty
+                    self.client.send_local_task_results(self.collaborator_name, round_number, task_name)
                     return
                 else:
                     raise AttributeError(f"{func_name} is not callable on {self.task_runner}")

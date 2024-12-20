@@ -598,8 +598,8 @@ class Aggregator:
         collaborator_name,
         round_number,
         task_name,
-        data_size,
-        named_tensors,
+        data_size=None,
+        named_tensors=None,
     ):
         """
         RPC called by collaborator.
@@ -634,6 +634,13 @@ class Aggregator:
             f"Collaborator {collaborator_name} is sending task results "
             f"for {task_name}, round {round_number}"
         )
+
+        if self.is_flex_available():
+            # Skip to end of round check
+            with self.lock:
+                self._is_collaborator_done(collaborator_name, round_number)
+                self._end_of_round_with_stragglers_check()
+
 
         task_key = TaskResultKey(task_name, collaborator_name, round_number)
 
@@ -1012,8 +1019,10 @@ class Aggregator:
 
         # Compute all validation related metrics
         all_tasks = self.assigner.get_all_tasks_for_round(self.round_number)
-        for task_name in all_tasks:
-            self._compute_validation_related_task_metrics(task_name)
+
+        if not self.is_flex_available():
+            for task_name in all_tasks:
+                self._compute_validation_related_task_metrics(task_name)
 
         if self.log_memory_usage:
             # This is the place to check the memory usage of the aggregator
@@ -1026,8 +1035,10 @@ class Aggregator:
         self._end_of_round_check_done[self.round_number] = True
 
         # Save the latest model
-        self.logger.info("Saving round %s model...", self.round_number)
-        self._save_model(self.round_number, self.last_state_path)
+        if not self.is_flex_available():
+            # external FL framework will handle the model saving if FLEX is enabled
+            self.logger.info("Saving round %s model...", self.round_number)
+            self._save_model(self.round_number, self.last_state_path)
 
         self.round_number += 1
         # resetting stragglers for task for a new round

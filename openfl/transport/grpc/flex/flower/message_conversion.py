@@ -8,7 +8,6 @@ def flower_to_openfl_message(flower_message, header=None):
         # If the input is already an OpenFL message, return it as-is
         return flower_message
     else:
-        # TODO: Add verification steps for messages coming from Flower entities
         """Convert a Flower MessageContainer to an OpenFL message."""
         # Create the OpenFL message
         openfl_message = aggregator_pb2.DropPod()
@@ -16,6 +15,8 @@ def flower_to_openfl_message(flower_message, header=None):
         if header:
             openfl_message.header.CopyFrom(header)
         # openfl_message.message_type = flower_message.metadata['grpc-message-qualname']
+
+        # TODO: Add verification steps for messages coming from Flower entities
         serialized_flower_message = flower_message.SerializeToString()
         openfl_message.message.npbytes = serialized_flower_message
         openfl_message.message.size = len(serialized_flower_message)
@@ -31,6 +32,4 @@ def openfl_to_flower_message(openfl_message):
     # Deserialize the Flower message from the DataStream npbytes field
         flower_message = grpcadapter_pb2.MessageContainer()
         flower_message.ParseFromString(openfl_message.message.npbytes)
-        bytes_parsed = openfl_message.message.npbytes
-        # import pdb; pdb.set_trace()
         return flower_message
