@@ -19,12 +19,18 @@ In addition, there are options to run the `SuperLink` and `SuperNode` as [long-l
 
 ### Install OpenFL
 
-Ensure that OpenFL is installed
+Create virtual env
 ```sh
 pip install virtualenv
 virtualenv ./venv
 source ./venv/bin/activate
-pip install openfl
+```
+
+Install OpenFL from source
+```sh
+git clone https://github.com/securefederatedai/openfl.git
+cd openfl
+pip install -e .
 ```
 
 ### Create a Workspace
