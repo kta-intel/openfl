@@ -80,18 +80,3 @@ class FLEXFlower(FederatedLearningExchange):
             self.logger.info(f"[FLEX] `flwr run` subprocess started with PID: {self.flwr_run_process.pid}")
         elif self.flwr_run_process:
             self.logger.info("[FLEX] `flwr run` subprocess is already running.")
-
-    def stop(self):
-        """
-        Stop the `flower-superlink` and `flwr run` subprocesses if they are running.
-        """
-        super().stop()
-        
-        if self.flwr_run_process:
-            self.logger.info(f"[FLEX] Stopping `flwr run` subprocess with PID: {self.flwr_run_process.pid}...")
-            self.flwr_run_process.terminate()
-            self.flwr_run_process.wait()
-            self.flwr_run_process = None
-            self.logger.info("[FLEX] `flwr run` subprocess stopped.")
-        else:
-            self.logger.info("[FLEX] No `flwr run` subprocess is currently running.")

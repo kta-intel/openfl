@@ -36,9 +36,11 @@ class FederatedLearningExchange:
         """
         if self._process:
             self.logger.info(f"[FLEX] Stopping subprocess with PID: {self._process.pid}...")
-            import pdb; pdb.set_trace()
             self._process.terminate()
-            self._process.wait()
+            try:
+                self._process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
             self._process = None
             self.logger.info("[FLEX] Subprocess stopped.")
         else:
