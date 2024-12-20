@@ -33,6 +33,8 @@ data_loader :
 task_runner :
   defaults : plan/defaults/task_runner.yaml
   template : openfl.federated.task.runner_flower.FlowerTaskRunner
+  settings :
+    auto_shutdown : True
 
 network :
   defaults : plan/defaults/network.yaml

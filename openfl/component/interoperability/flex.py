@@ -4,14 +4,14 @@ from logging import getLogger
 
 class FederatedLearningExchange:
     """
-    A skeletal base class for managing a subprocess.
+    A skeletal base class for managing a server process.
     """
 
     def __init__(self, command: list[str], component_name: str = "Base", **kwargs):
         """
-        Initialize FLEX with a command to run as a subprocess.
+        Initialize FLEX to run a server process.
         Args:
-            command (list[str]): The command to run the server as a subprocess.
+            command (list[str]): The command to run the server process.
             component_name (str): The name of the specific FLEX component being used.
         """
         self.local_grpc_client = None
@@ -22,28 +22,28 @@ class FederatedLearningExchange:
 
     def start(self):
         """
-        Start the subprocess with the provided command.
+        Start the server process with the provided command.
         """
         if self._process is None:
-            self.logger.info(f"[FLEX] Starting subprocess: {' '.join(self._command)}")
+            self.logger.info(f"[FLEX] Starting server process: {' '.join(self._command)}")
             self._process = subprocess.Popen(self._command)
-            self.logger.info(f"[FLEX] Subprocess started with PID: {self._process.pid}")
+            self.logger.info(f"[FLEX] server process started with PID: {self._process.pid}")
         else:
-            self.logger.info("[FLEX] Subprocess is already running.")
+            self.logger.info("[FLEX] server process is already running.")
 
     def stop(self):
         """
-        Stop the subprocess if it is running.
+        Stop the server process if it is running.
         """
         if self._process:
-            self.logger.info(f"[FLEX] Stopping subprocess with PID: {self._process.pid}...")
-            # find and terminate child processes
-            parent = psutil.Process(self._process.pid)
-            children = parent.children(recursive=True)
-            for child in children:
-                self.logger.info(f"[FLEX] Stopping child process with PID: {child.pid}...")
-                child.terminate()
-            _, still_alive = psutil.wait_procs(children, timeout=1)
+            self.logger.info(f"[FLEX] Stopping server process with PID: {self._process.pid}...")
+            # find and terminate sub_process processes
+            main_process = psutil.Process(self._process.pid)
+            sub_processes = main_process.children(recursive=True)
+            for sub_process in sub_processes:
+                self.logger.info(f"[FLEX] Stopping server subprocess  with PID: {sub_process.pid}...")
+                sub_process.terminate()
+            _, still_alive = psutil.wait_procs(sub_processes, timeout=1)
             for p in still_alive:
                 p.kill()
             # Terminate the main process
@@ -53,9 +53,9 @@ class FederatedLearningExchange:
             except subprocess.TimeoutExpired:
                 self._process.kill()
             self._process = None
-            self.logger.info("[FLEX] Subprocess stopped.")
+            self.logger.info("[FLEX] Server process stopped.")
         else:
-            self.logger.info("[FLEX] No subprocess is currently running.")
+            self.logger.info("[FLEX] No server process is currently running.")
 
     def get_local_grpc_client(self):
         """

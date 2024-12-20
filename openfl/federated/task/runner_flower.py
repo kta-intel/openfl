@@ -9,6 +9,7 @@ from logging import getLogger
 import signal
 import threading
 import psutil
+import time
 
 
 class FlowerTaskRunner(TaskRunner):
@@ -17,11 +18,13 @@ class FlowerTaskRunner(TaskRunner):
     to initialize the experiment from the client side
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, auto_shutdown=True, **kwargs):
         """
         Initializes.
 
         Args:
+            auto_shutdown (bool): Whether to enable automatic shutdown based on subprocess activity.
+                Default to True. Set to False for long-lived component
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
@@ -34,6 +37,7 @@ class FlowerTaskRunner(TaskRunner):
 
         # Calculate the client port by adding the partition ID to the base port
         self.client_port = base_port + self.partition_id
+        self.auto_shutdown = auto_shutdown
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         """
@@ -42,6 +46,7 @@ class FlowerTaskRunner(TaskRunner):
         Args:
             openfl_client: The OpenFL client instance used to communicate with the OpenFL server.
             collaborator_name: The name of the collaborator.
+            auto_shutdown: Whether to enable automatic shutdown based on subprocess activity.
             **kwargs: Additional parameters, including 'local_server_port'.
         """
         local_server_port = kwargs['local_server_port']
@@ -73,13 +78,12 @@ class FlowerTaskRunner(TaskRunner):
         def signal_handler(_sig, _frame):
             self.logger.info("Received shutdown signal. Terminating supernode process...")
 
-            # find and terminate child processes
-            parent = psutil.Process(supernode_process.pid)
-            children = parent.children(recursive=True)
-            for child in children:
-                self.logger.info(f"[FLEX] Stopping child process with PID: {child.pid}...")
-                child.terminate()
-            _, still_alive = psutil.wait_procs(children, timeout=1)
+            # find and terminate client_app_process processes
+            main_subprocess = psutil.Process(supernode_process.pid)
+            client_app_processes = main_subprocess.children(recursive=True)
+            for client_app_process in client_app_processes:
+                client_app_process.terminate()
+            _, still_alive = psutil.wait_procs(client_app_processes, timeout=1)
             for p in still_alive:
                 p.kill()
             # Terminate the main process
@@ -96,6 +100,41 @@ class FlowerTaskRunner(TaskRunner):
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+
+        if self.auto_shutdown:
+            self.logger.info("Automatic shutdown enabled. Monitoring subprocess activity...")
+
+            def monitor_subprocesses():
+                main_subprocess = psutil.Process(supernode_process.pid)
+                previous_end_time = None
+                intervals = []
+
+                while True:
+                    client_app_processes = main_subprocess.children(recursive=True)
+                    if client_app_processes:
+                        for client_app_process in client_app_processes:
+                            client_app_process.wait()
+                            end_time = time.time()
+                            if previous_end_time is not None:
+                                interval = end_time - previous_end_time
+                                intervals.append(interval)
+                                # self.logger.info(f"Subprocess ended. Interval: {interval:.2f} seconds.")
+                            previous_end_time = end_time
+
+                    if previous_end_time is not None:
+                        running_timer = time.time() - previous_end_time
+                        if intervals:
+                            average_interval = sum(intervals) / len(intervals)
+                            # self.logger.info(f"Running timer: {running_timer:.2f} seconds. Average interval: {average_interval:.2f} seconds.")
+                            if running_timer > 2 * average_interval:
+                                self.logger.info("No new subprocess started within the expected time. Initiating shutdown...")
+                                signal_handler(signal.SIGTERM, None)
+                                return
+
+                    time.sleep(1)
+
+            monitor_thread = threading.Thread(target=monitor_subprocesses)
+            monitor_thread.start()
 
         self.logger.info("Press CTRL+C to stop the server and supernode process.")
         
