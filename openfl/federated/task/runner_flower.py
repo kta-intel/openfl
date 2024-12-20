@@ -6,6 +6,9 @@ from openfl.federated.task.runner import TaskRunner
 from openfl.transport.grpc.flex.flower.local_grpc_server import LocalGRPCServer
 import subprocess
 from logging import getLogger
+import signal
+import threading
+import psutil
 
 
 class FlowerTaskRunner(TaskRunner):
@@ -52,27 +55,48 @@ class FlowerTaskRunner(TaskRunner):
         server.start()
         self.logger.info(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
 
-        server.stop(0)
-        self.logger.info(f"OpenFL local gRPC server stopped.")
+        # Start the Flower SuperNode in a subprocess
+        command = [
+            "flower-supernode",
+            "--insecure",
+            "--grpc-adapter",
+            "--superlink", f"127.0.0.1:{local_server_port}", #  note [kta-intel]: this connects to local gRPC server
+            "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
+            "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
+        ]
+        # Start the subprocess
+        supernode_process = subprocess.Popen(command, shell=False)
 
-        # # Start the Flower SuperNode in a subprocess
-        # command = [
-        #     "flower-supernode",
-        #     "--insecure",
-        #     "--grpc-adapter",
-        #     "--superlink", f"127.0.0.1:{local_server_port}", #  note [kta-intel]: this connects to local gRPC server
-        #     "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
-        #     "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
-        # ]
-        # # Start the subprocess
-        # supernode_process = subprocess.Popen(command, shell=False)
+        # Create an event to wait for the termination signal
+        termination_event = threading.Event()
 
-        # import pdb; pdb.set_trace()
-        # server.wait_for_termination()
+        def signal_handler(_sig, _frame):
+            self.logger.info("Received shutdown signal. Terminating supernode process...")
 
-        # supernode_process.terminate()
-        # supernode_process.wait()
-        # try:
-        #     supernode_process.wait(timeout=5)
-        # except subprocess.TimeoutExpired:
-        #     supernode_process.kill()
+            # find and terminate child processes
+            parent = psutil.Process(supernode_process.pid)
+            children = parent.children(recursive=True)
+            for child in children:
+                self.logger.info(f"[FLEX] Stopping child process with PID: {child.pid}...")
+                child.terminate()
+            _, still_alive = psutil.wait_procs(children, timeout=1)
+            for p in still_alive:
+                p.kill()
+            # Terminate the main process
+
+            supernode_process.terminate()
+            try:
+                supernode_process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                supernode_process.kill()
+            self.logger.info("Supernode process terminated. Shutting down gRPC server...")
+            server.stop(0)
+            self.logger.info("gRPC server stopped.")
+            termination_event.set()
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        self.logger.info("Press CTRL+C to stop the server and supernode process.")
+        
+        termination_event.wait()

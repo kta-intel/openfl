@@ -82,5 +82,4 @@ class FLEXFlower(FederatedLearningExchange):
         """
         Stop the `flower-superlink` subprocess.
         """
-        # TODO : Add logic to maintain a long-lived federation -> might be better from the taskrunner
         super().stop()
