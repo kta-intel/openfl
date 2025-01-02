@@ -2,17 +2,18 @@ import subprocess
 import psutil
 from logging import getLogger
 
-class FederatedLearningExchange:
+class Connector:
     """
-    A skeletal base class for managing a server process.
+    A skeletal base class for managing a server process of an external federated learning framework and 
+    the connection with OpenFL's server
     """
 
     def __init__(self, command: list[str], component_name: str = "Base", **kwargs):
         """
-        Initialize FLEX to run a server process.
+        Initialize the OpenFL Connector.
         Args:
             command (list[str]): The command to run the server process.
-            component_name (str): The name of the specific FLEX component being used.
+            component_name (str): The name of the specific Connector component being used.
         """
         self.local_grpc_client = None
         self._command = command
@@ -25,23 +26,23 @@ class FederatedLearningExchange:
         Start the server process with the provided command.
         """
         if self._process is None:
-            self.logger.info(f"[FLEX] Starting server process: {' '.join(self._command)}")
+            self.logger.info(f"[OpenFL Connector] Starting server process: {' '.join(self._command)}")
             self._process = subprocess.Popen(self._command)
-            self.logger.info(f"[FLEX] server process started with PID: {self._process.pid}")
+            self.logger.info(f"[OpenFL Connector] server process started with PID: {self._process.pid}")
         else:
-            self.logger.info("[FLEX] server process is already running.")
+            self.logger.info("[OpenFL Connector] server process is already running.")
 
     def stop(self):
         """
         Stop the server process if it is running.
         """
         if self._process:
-            self.logger.info(f"[FLEX] Stopping server process with PID: {self._process.pid}...")
+            self.logger.info(f"[OpenFL Connector] Stopping server process with PID: {self._process.pid}...")
             # find and terminate sub_process processes
             main_process = psutil.Process(self._process.pid)
             sub_processes = main_process.children(recursive=True)
             for sub_process in sub_processes:
-                self.logger.info(f"[FLEX] Stopping server subprocess  with PID: {sub_process.pid}...")
+                self.logger.info(f"[OpenFL Connector] Stopping server subprocess  with PID: {sub_process.pid}...")
                 sub_process.terminate()
             _, still_alive = psutil.wait_procs(sub_processes, timeout=1)
             for p in still_alive:
@@ -53,9 +54,9 @@ class FederatedLearningExchange:
             except subprocess.TimeoutExpired:
                 self._process.kill()
             self._process = None
-            self.logger.info("[FLEX] Server process stopped.")
+            self.logger.info("[OpenFL Connector] Server process stopped.")
         else:
-            self.logger.info("[FLEX] No server process is currently running.")
+            self.logger.info("[OpenFL Connector] No server process is currently running.")
 
     def get_local_grpc_client(self):
         """
@@ -63,8 +64,8 @@ class FederatedLearningExchange:
         """
         return self.local_grpc_client
     
-    def print_flex_info(self):
+    def print_Connector_info(self):
         """
-        Print information indicating which FLEX component is being used.
+        Print information indicating which Connector component is being used.
         """
-        self.logger.info(f"FLEX Enabled: {self.component_name}")
+        self.logger.info(f"OpenFL Connector Enabled: {self.component_name}")

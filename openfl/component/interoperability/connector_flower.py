@@ -1,16 +1,16 @@
 import subprocess
-from openfl.component.interoperability.flex import FederatedLearningExchange
-from openfl.transport.grpc.flex.flower.local_grpc_client import LocalGRPCClient
+from openfl.component.interoperability.connector import Connector
+from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
-class FLEXFlower(FederatedLearningExchange):
+class ConnectorFlower(Connector):
     """
-    FLEX subclass for the Flower framework.
+    Connector subclass for the Flower framework.
     Responsible for generating the Flower server command.
     """
 
     def __init__(self, superlink_params: dict, flwr_run_params: dict = None, **kwargs):
         """
-        Initialize FLEXFlower by building the server command from the superlink_params.
+        Initialize ConnectorFlower by building the server command from the superlink_params.
         Args:
             superlink_params (dict): A dictionary of Flower server settings.
             flwr_run_params (dict, optional): A dictionary containing the Flower run parameters. Defaults to None.
@@ -20,8 +20,8 @@ class FLEXFlower(FederatedLearningExchange):
         command = self._build_command()
         super().__init__(command, component_name="Flower")
         
-        flex_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
-        self.local_grpc_client = LocalGRPCClient(flex_address)
+        connector_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
+        self.local_grpc_client = LocalGRPCClient(connector_address)
         
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
         self.flwr_run_process = None
@@ -77,7 +77,7 @@ class FLEXFlower(FederatedLearningExchange):
         super().start()
         
         if self.flwr_run_command:
-            self.logger.info(f"[FLEX] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
+            self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
             self.flwr_run_process = subprocess.Popen(self.flwr_run_command)
 
     def stop(self):

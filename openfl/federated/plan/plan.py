@@ -266,7 +266,7 @@ class Plan:
         self.collaborator_ = None  # collaborator object
         self.aggregator_ = None  # aggregator object
         self.assigner_ = None  # assigner object
-        self.flex_ = None  # federated learning exchange object
+        self.connector_ = None  # OpenFL Connector object
 
         self.loader_ = None  # data loader object
         self.runner_ = None  # task runner object
@@ -341,16 +341,16 @@ class Plan:
 
         return self.assigner_
     
-    def get_flex(self):
+    def get_connector(self):
         """Get federated learning exchange object."""
-        defaults = self.config.get("flex")
+        defaults = self.config.get("connector")
 
-        if self.flex_ is None and defaults:
-            self.flex_ = Plan.build(**defaults)
+        if self.connector_ is None and defaults:
+            self.connector_ = Plan.build(**defaults)
         else:
-            self.flex_ = None
+            self.connector_ = None
 
-        return self.flex_
+        return self.connector_
 
     def get_tasks(self):
         """Get federation tasks."""
@@ -403,7 +403,7 @@ class Plan:
         defaults[SETTINGS]["assigner"] = self.get_assigner()
         defaults[SETTINGS]["compression_pipeline"] = self.get_tensor_pipe()
         defaults[SETTINGS]["straggler_handling_policy"] = self.get_straggler_handling_policy()
-        defaults[SETTINGS]["flex"] = self.get_flex()
+        defaults[SETTINGS]["connector"] = self.get_connector()
         log_metric_callback = defaults[SETTINGS].get("log_metric_callback")
 
         if log_metric_callback:

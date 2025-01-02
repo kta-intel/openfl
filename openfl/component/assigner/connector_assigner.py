@@ -7,7 +7,7 @@
 from openfl.component.assigner.assigner import Assigner
 
 
-class FLEXAssigner(Assigner):
+class ConnectorAssigner(Assigner):
     """The task assigner maintains a list of tasks.
 
     This assigner is designed to facilitate interoperability between federated learning frameworks. 
@@ -20,7 +20,7 @@ class FLEXAssigner(Assigner):
     """
 
     def __init__(self, task_groups=None, **kwargs):
-        """Initializes the FLEXAssigner.
+        """Initializes the ConnectorAssigner.
 
         Args:
             task_groups (list of object): Task groups to assign.
@@ -47,7 +47,7 @@ class FLEXAssigner(Assigner):
             # Check if any task other than 'start_client_adapter' is present
             for task in group["tasks"]:
                 if task != 'start_client_adapter':
-                    raise ValueError(f"Unsupported task '{task}' found. FLEXAssigner only supports 'start_client_adapter'.")
+                    raise ValueError(f"Unsupported task '{task}' found. ConnectorAssigner only supports 'start_client_adapter'.")
 
         # Start by finding all of the tasks in all specified groups
         self.all_tasks_in_groups = list(

@@ -7,9 +7,9 @@ aggregator :
   settings :
     rounds_to_train : 1 #DO NOT EDIT
 
-flex : 
-  defaults : plan/defaults/flex.yaml
-  template : openfl.component.FLEXFlower
+connector : 
+  defaults : plan/defaults/connector.yaml
+  template : openfl.component.ConnectorFlower
   settings :
     superlink_params :
       insecure : True
@@ -41,15 +41,15 @@ network :
 
 assigner :
   defaults : plan/defaults/assigner.yaml
-  template : openfl.component.FLEXAssigner
+  template : openfl.component.ConnectorAssigner
   settings :
     task_groups :
-      - name  : FLEX_Flower
+      - name  : Connector_Flower
         tasks : 
           - start_client_adapter
 
 tasks :
-  defaults : plan/defaults/tasks_flex.yaml
+  defaults : plan/defaults/tasks_connector.yaml
 
 compression_pipeline :
   defaults : plan/defaults/compression_pipeline.yaml

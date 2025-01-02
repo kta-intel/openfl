@@ -48,12 +48,12 @@ This will create a workspace in your current working directory called `./my_work
 Notice under `./plan`, you will find the familiar OpenFL YAML files to configure the experiment. `col.yaml` and `data.yaml` will be populated by the collaborators that will run the Flower client app and the respective data shard or directory they will perform their training and testing on.
 plan.yaml configures the experiment itself. The Open-Flower integration makes a few key changes to the `plan.yaml`:
 
-1. Introduction of a new top-level key (`flex`) to configure a newly introduced component called "FLEX (Federated Learning EXchange)". Specifically, the Flower integration uses a `FLEX` subclass called `FLEXFlower`. This component is run by the aggregator and is responsible for initializing the Flower SuperLink and connecting to the OpenFL server. The superlink parameters can be configured using `flex.settings.superlink_params`. If nothing is supplied, it will simply run `flower-superlink --insecure` with the command's default settings as dictated by Flower. It also includes the option to run the flwr run command via `flex.settings.flwr_run_params`. Without setting these commands, the aggregator will not invoke `flwr run` and it will be up to the user to run this process separately to start a Flower experiment.
+1. Introduction of a new top-level key (`connector`) to configure a newly introduced component called `Connector`. Specifically, the Flower integration uses a `Connector` subclass called `ConnectorFlower`. This component is run by the aggregator and is responsible for initializing the Flower SuperLink and connecting to the OpenFL server. The superlink parameters can be configured using `connector.settings.superlink_params`. If nothing is supplied, it will simply run `flower-superlink --insecure` with the command's default settings as dictated by Flower. It also includes the option to run the flwr run command via `connector.settings.flwr_run_params`. Without setting these commands, the aggregator will not invoke `flwr run` and it will be up to the user to run this process separately to start a Flower experiment.
 
 ```yaml
-flex:
-  defaults: plan/defaults/flex.yaml
-  template: openfl.component.FLEXFlower
+connector:
+  defaults: plan/defaults/connector.yaml
+  template: openfl.component.ConnectorFlower
   settings:
     superlink_params:
       insecure: True
@@ -65,15 +65,15 @@ flex:
       federation_name: "local-poc"
 ```
 
-2. `FLEXAssigner` and tasks designed to explicitly run `start_client_adapter` task for every authorized collaborator, which is defined by the Task Runner.
+2. `ConnectorAssigner` and tasks designed to explicitly run `start_client_adapter` task for every authorized collaborator, which is defined by the Task Runner.
 
 ```yaml
 assigner:
   defaults: plan/defaults/assigner.yaml
-  template: openfl.component.FLEXAssigner
+  template: openfl.component.ConnectorAssigner
   settings:
     task_groups:
-      - name: FLEX_Flower
+      - name: Connector_Flower
         tasks:
           - start_client_adapter
 ```
@@ -149,9 +149,9 @@ WARNING  CutoffTimeBasedStragglerHandling is disabled as straggler_cutoff_time i
 INFO     Building `openfl.component.FLEXFlower` Module.                                                                                   plan.py:226
 INFO     Building `openfl.component.Aggregator` Module.                                                                                   plan.py:226
 use_tls=True
-INFO     [FLEX] Starting server process: flower-superlink --fleet-api-type grpc-adapter --insecure --serverappio-api-address               flex.py:28
-         127.0.0.1:9091 --fleet-api-address 127.0.0.1:9092 --exec-api-address 127.0.0.1:9093                                                         
-INFO     [FLEX] server process started with PID: 1972825                                                                                   flex.py:30
+INFO     [OpenFL Connector] Starting server process: flower-superlink --fleet-api-type grpc-adapter --insecure                        connector.py:28
+         --serverappio-api-address 127.0.0.1:9091 --fleet-api-address 127.0.0.1:9092 --exec-api-address 127.0.1:9093                                                         
+INFO     [OpenFL Connector] server process started with PID: 1972825                                                                  connector.py:30
 INFO     Starting Aggregator gRPC Server                                                                                     aggregator_server.py:389
 INFO :      Starting Flower SuperLink
 WARNING :   Option `--insecure` was set. Starting insecure HTTP server.
@@ -212,9 +212,9 @@ INFO     Round: 0, Collaborators that have completed all tasks: ['collaborator1'
 INFO     Experiment Completed. Cleaning up...                                                                                      aggregator.py:1053
 INFO     Sending signal to collaborator collaborator2 to shutdown...                                                                aggregator.py:360
 INFO     Sending signal to collaborator collaborator1 to shutdown...                                                                aggregator.py:360
-INFO     [FLEX] Stopping server process with PID: 1963348...                                                                               flex.py:39
-INFO     [FLEX] Stopping server subprocess  with PID: 1964099...                                                                           flex.py:44
-INFO     [FLEX] Server process stopped.  
+INFO     [OpenFL Connector] Stopping server process with PID: 1963348...                                                              connector.py:39
+INFO     [OpenFL Connector] Stopping server subprocess  with PID: 1964099...                                                          connector.py:44
+INFO     [OpenFL Connector] Server process stopped.  
 ```    
 Upon the completion of the experiment, on the `collaborator` terminals, the Flower components should be outputting the information about the run:
 
@@ -252,7 +252,7 @@ flwr run ./app-pytorch
 It will run another experiment. Once you are done, you can manually shut down OpenFL's `collaborator` and Flower's `SuperNode` with `CTRL+C`. This will trigger a task-completion by the task runner that'll subsequently begin the graceful shutdown process of the OpenFL and Flower components.
 
 ### Invoke Flower experiment as a separate command
-If you did not set `flwr_run_params` in the `plan.yaml`, the OpenFL `FLEX` will not automatically start a Flower experiment. Instead, you should open a terminal, navigate to this workspace, and run 
+If you did not set `flwr_run_params` in the `plan.yaml`, the OpenFL `Connector` will not automatically start a Flower experiment. Instead, you should open a terminal, navigate to this workspace, and run 
 ```SH
 flwr run ./app-pytorch
 ```

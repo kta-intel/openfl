@@ -16,8 +16,6 @@ from openfl.protocols import aggregator_pb2, aggregator_pb2_grpc, utils
 from openfl.transport.grpc.grpc_channel_options import channel_options
 from openfl.utilities import check_equal, check_is_in
 
-import subprocess
-
 logger = logging.getLogger(__name__)
 
 
@@ -70,7 +68,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
                 TLS connection.
             private_key (str): The path to the server's private key for the
                 TLS connection.
-            use_flex (bool): whether to use framework interopability mode
+            use_connector (bool): whether to use framework interopability mode
             **kwargs: Additional keyword arguments.
         """
         print(f"{use_tls=}")
@@ -83,9 +81,9 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         self.private_key = private_key
         self.server = None
         self.server_credentials = None
-        self.use_flex = self.aggregator.is_flex_available()
+        self.use_connector = self.aggregator.is_connector_available()
 
-        if self.use_flex:
+        if self.use_connector:
             self.local_grpc_client =  self.aggregator.get_local_grpc_client()  # Initialize the local gRPC client
         else:
             self.local_grpc_client = None
@@ -242,7 +240,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.GetAggregatedTensorResponse: The response to the
                 request.
         """
-        if self.use_flex:
+        if self.use_connector:
             context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
 
         self.validate_collaborator(request, context)
@@ -284,7 +282,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.SendLocalTaskResultsResponse: The response to the
                 request.
         """
-        # if self.use_flex:
+        # if self.use_connector:
         #     context.abort(StatusCode.UNIMPLEMENTED, "This method is not available in framework interopability mode.")
 
         try:
@@ -323,7 +321,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             aggregator_pb2.PelicanDrop: The response to the
             request.
         """
-        if not self.use_flex:
+        if not self.use_connector:
             context.abort(StatusCode.UNIMPLEMENTED, "PelicanDrop is only available in federated interopability mode.")
 
         self.validate_collaborator(request, context)
@@ -381,8 +379,8 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
 
         """
 
-        if self.use_flex:
-            self.aggregator.start_flex()
+        if self.use_connector:
+            self.aggregator.start_connector()
 
         self.get_server()
 
@@ -395,7 +393,7 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         except KeyboardInterrupt:
             pass
 
-        if self.use_flex:
-            self.aggregator.stop_flex()
+        if self.use_connector:
+            self.aggregator.stop_connector()
 
         self.server.stop(0)

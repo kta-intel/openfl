@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from flwr.proto import grpcadapter_pb2_grpc
 from multiprocessing import cpu_count
 from openfl.federated.task.runner import TaskRunner
-from openfl.transport.grpc.flex.flower.local_grpc_server import LocalGRPCServer
+from openfl.transport.grpc.connector.flower.local_grpc_server import LocalGRPCServer
 import subprocess
 from logging import getLogger
 import signal

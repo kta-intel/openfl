@@ -164,8 +164,8 @@ def initialize(
         gandlf_config_path=gandlf_config,
     )
 
-    if 'flex' in plan.config:
-        logger.info("FLEX enabled: %s", plan.config['flex'])
+    if 'connector' in plan.config:
+        logger.info("OpenFL Connector enabled: %s", plan.config['connector'])
     else:
         init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
 

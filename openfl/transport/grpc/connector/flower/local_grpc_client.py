@@ -1,6 +1,6 @@
 import grpc
 from flwr.proto import grpcadapter_pb2_grpc
-from openfl.transport.grpc.flex.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
+from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 
 class LocalGRPCClient:
     """

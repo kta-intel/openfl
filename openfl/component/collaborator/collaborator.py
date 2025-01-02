@@ -252,7 +252,7 @@ class Collaborator:
             kwargs = self.task_config[task_name]["kwargs"]
         if func_name=="start_client_adapter":
             # TODO: Need to determine a more general way to handle this in order to enable
-            # additional tasks to be added to be added to FLEX
+            # additional tasks to be added to be added to Connector
             if hasattr(self.task_runner, func_name):
                 method = getattr(self.task_runner, func_name)
                 if callable(method):

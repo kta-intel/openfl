@@ -71,7 +71,7 @@ class Aggregator:
         best_state_path,
         last_state_path,
         assigner,
-        flex,
+        connector,
         use_delta_updates=True,
         straggler_handling_policy=None,
         rounds_to_train=256,
@@ -137,7 +137,7 @@ class Aggregator:
         self.uuid = aggregator_uuid
         self.federation_uuid = federation_uuid
         self.assigner = assigner
-        self.flex = flex
+        self.connector = connector
         self.quit_job_sent_to = []
 
         self.tensor_db = TensorDB()
@@ -177,7 +177,7 @@ class Aggregator:
                 tensor_pipe=self.compression_pipeline,
             )
         else:
-            if self.flex:
+            if self.connector:
                 # The model definition will be handled by the respective framework
                 self.model = {}
             else:
@@ -635,7 +635,7 @@ class Aggregator:
             f"for {task_name}, round {round_number}"
         )
 
-        if self.is_flex_available():
+        if self.is_connector_available():
             # Skip to end of round check
             with self.lock:
                 self._is_collaborator_done(collaborator_name, round_number)
@@ -697,23 +697,47 @@ class Aggregator:
 
             self._end_of_round_with_stragglers_check()
 
-    def is_flex_available(self):
-        return self.flex is not None
+    def is_connector_available(self):
+        """
+        Check if the OpenFL Connector is available.
 
-    def start_flex(self):
-        if not self.is_flex_available():
-            raise RuntimeError("Federated Learning exchange as not been enabled.")
-        return self.flex.start()
+        Returns:
+            bool: True if connector is available, False otherwise.
+        """
+        return self.connector is not None
 
-    def stop_flex(self):
-        if not self.is_flex_available():
-            raise RuntimeError("Federated Learning exchange as not been enabled.")
-        return self.flex.stop()
+    def start_connector(self):
+        """
+        Start the OpenFL Connector.
+
+        Raises:
+            RuntimeError: If OpenFL Connector has not been enabled.
+        """
+        if not self.is_connector_available():
+            raise RuntimeError("OpenFL Connector has not been enabled.")
+        return self.connector.start()
+
+    def stop_connector(self):
+        """
+        Stop the OpenFL Connector.
+
+        Raises:
+            RuntimeError: If OpenFL Connector has not been enabled.
+        """
+        if not self.is_connector_available():
+            raise RuntimeError("OpenFL Connector has not been enabled.")
+        return self.connector.stop()
 
     def get_local_grpc_client(self):
-        if not self.is_flex_available():
-            raise RuntimeError("Federated Learning exchange as not been enabled.")
-        return self.flex.get_local_grpc_client()
+        """
+        Get the local gRPC client for the OpenFL Connector.
+
+        Raises:
+            RuntimeError: If OpenFL Connector has not been enabled.
+        """
+        if not self.is_connector_available():
+            raise RuntimeError("OpenFL Connector has not been enabled.")
+        return self.connector.get_local_grpc_client()
 
     def _end_of_round_with_stragglers_check(self):
         """
@@ -1017,7 +1041,7 @@ class Aggregator:
         if self._end_of_round_check_done[self.round_number]:
             return
 
-        if not self.is_flex_available():
+        if not self.is_connector_available():
         # Compute all validation related metrics
             all_tasks = self.assigner.get_all_tasks_for_round(self.round_number)
 
@@ -1035,8 +1059,8 @@ class Aggregator:
         self._end_of_round_check_done[self.round_number] = True
 
         # Save the latest model
-        if not self.is_flex_available():
-            # external FL framework will handle the model saving if FLEX is enabled
+        if not self.is_connector_available():
+            # external FL framework will handle the model saving if connector is enabled
             self.logger.info("Saving round %s model...", self.round_number)
             self._save_model(self.round_number, self.last_state_path)
 
