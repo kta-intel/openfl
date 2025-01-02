@@ -15,16 +15,25 @@ import time
 class FlowerTaskRunner(TaskRunner):
     """
     FlowerTaskRunner is a task runner that executes Flower SuperNode
-    to initialize the experiment from the client side
+    to initialize the experiment from the client side.
+
+    This class is responsible for starting a local gRPC server and a Flower SuperNode
+    in a subprocess. It also provides options for automatic shutdown based on subprocess
+    activity.
+
+    Shutdown Options:
+    - Manual Shutdown: The server and supernode process can be manually stopped by pressing CTRL+C.
+    - Automatic Shutdown: If enabled, the system will monitor the activity of subprocesses and 
+      automatically shut down if no new subprocess starts within a certain time frame.
     """
 
     def __init__(self, auto_shutdown=True, **kwargs):
         """
-        Initializes.
+        Initializes the FlowerTaskRunner.
 
         Args:
             auto_shutdown (bool): Whether to enable automatic shutdown based on subprocess activity.
-                Default to True. Set to False for long-lived component
+                Default is True. Set to False for long-lived components.
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
@@ -46,8 +55,20 @@ class FlowerTaskRunner(TaskRunner):
         Args:
             openfl_client: The OpenFL client instance used to communicate with the OpenFL server.
             collaborator_name: The name of the collaborator.
-            auto_shutdown: Whether to enable automatic shutdown based on subprocess activity.
             **kwargs: Additional parameters, including 'local_server_port'.
+
+        The method performs the following steps:
+        1. Starts a local gRPC server to handle communication between the OpenFL client and the Flower SuperNode.
+        2. Launches the Flower SuperNode in a subprocess.
+        3. Sets up signal handlers for manual shutdown (via CTRL+C).
+        4. If auto_shutdown is enabled, monitors subprocess activity and initiates shutdown if no new subprocess starts within the expected time frame.
+
+        Shutdown Process:
+        - When a shutdown signal (SIGINT or SIGTERM) is received, the method will:
+            1. Terminate all child processes of the supernode subprocess.
+            2. Terminate the main supernode subprocess.
+            3. Stop the gRPC server.
+            4. Log the shutdown process and set the termination event to stop the server.
         """
         local_server_port = kwargs['local_server_port']
 
