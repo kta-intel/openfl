@@ -1017,10 +1017,10 @@ class Aggregator:
         if self._end_of_round_check_done[self.round_number]:
             return
 
-        # Compute all validation related metrics
-        all_tasks = self.assigner.get_all_tasks_for_round(self.round_number)
-
         if not self.is_flex_available():
+        # Compute all validation related metrics
+            all_tasks = self.assigner.get_all_tasks_for_round(self.round_number)
+
             for task_name in all_tasks:
                 self._compute_validation_related_task_metrics(task_name)
 
