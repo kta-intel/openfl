@@ -65,7 +65,7 @@ class ConnectorFlower(Connector):
         flwr_app_name = self.flwr_run_params.get("flwr_app_name")
         federation_name = self.flwr_run_params.get("federation_name")
         
-        command = ["flwr", "run", f"./{flwr_app_name}"]
+        command = ["flwr", "run", f"./src/{flwr_app_name}"]
         if federation_name:
             command.append(federation_name)
         return command

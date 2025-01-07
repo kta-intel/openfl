@@ -4,7 +4,7 @@ This workspace demonstrates a new functionality in OpenFL to interoperate with [
 
 ## Overview
 
-In this repository, you'll notice a directory called `./app-pytorch`. This is effectively a Flower PyTorch app created using Flower's `flwr new` command that has been modified to run a local federation. The client and server apps dictate what will be run by the client and server respectively. `Task.py` defines the logic that will be executed by each app, such as the model definition, train/test tasks, etc.
+In this repository, you'll notice a directory under `src` called `app-pytorch`. This is effectively a Flower PyTorch app created using Flower's `flwr new` command that has been modified to run a local federation. The client and server apps dictate what will be run by the client and server respectively. `Task.py` defines the logic that will be executed by each app, such as the model definition, train/test tasks, etc.
 
 ## Execution Methods
 
@@ -247,13 +247,13 @@ INFO :      GrpcAdapter.PullTaskIns
 ```
 You can run another experiment by opening another terminal, navigating to this workspace, and running:
 ```SH
-flwr run ./app-pytorch
+flwr run ./src/app-pytorch
 ```
 It will run another experiment. Once you are done, you can manually shut down OpenFL's `collaborator` and Flower's `SuperNode` with `CTRL+C`. This will trigger a task-completion by the task runner that'll subsequently begin the graceful shutdown process of the OpenFL and Flower components.
 
 ### Invoke Flower experiment as a separate command
 If you did not set `flwr_run_params` in the `plan.yaml`, the OpenFL `Connector` will not automatically start a Flower experiment. Instead, you should open a terminal, navigate to this workspace, and run 
 ```SH
-flwr run ./app-pytorch
+flwr run ./src/app-pytorch
 ```
 separately to begin the experiment.
