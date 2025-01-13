@@ -99,28 +99,34 @@ class FlowerTaskRunner(TaskRunner):
         def signal_handler(_sig, _frame):
             self.logger.info("Received shutdown signal. Terminating supernode process...")
 
-            # find and terminate client_app_process processes
-            main_subprocess = psutil.Process(supernode_process.pid)
-            client_app_processes = main_subprocess.children(recursive=True)
-            for client_app_process in client_app_processes:
-                client_app_process.terminate()
-            _, still_alive = psutil.wait_procs(client_app_processes, timeout=1)
-            for p in still_alive:
-                p.kill()
-            # Terminate the main process
+            if supernode_process.poll() is None:
+                # find and terminate client_app_process processes
+                main_subprocess = psutil.Process(supernode_process.pid)
+                client_app_processes = main_subprocess.children(recursive=True)
+                for client_app_process in client_app_processes:
+                    client_app_process.terminate()
+                _, still_alive = psutil.wait_procs(client_app_processes, timeout=1)
+                for p in still_alive:
+                    p.kill()
+                # Terminate the main process
+                supernode_process.terminate()
+                try:
+                    supernode_process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    supernode_process.kill()
+                self.logger.info("Supernode process terminated.")
+            else:
+                self.logger.info("Supernode process already terminated.")
 
-            supernode_process.terminate()
-            try:
-                supernode_process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                supernode_process.kill()
-            self.logger.info("Supernode process terminated. Shutting down gRPC server...")
+            self.logger.info("Shutting down gRPC server...")
             server.stop(0)
             self.logger.info("gRPC server stopped.")
             termination_event.set()
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+
+        monitor_thread = None
 
         if self.auto_shutdown:
             self.logger.info("Automatic shutdown enabled. Monitoring subprocess activity...")
@@ -130,7 +136,7 @@ class FlowerTaskRunner(TaskRunner):
                 previous_end_time = None
                 intervals = []
 
-                while True:
+                while not termination_event.is_set():
                     client_app_processes = main_subprocess.children(recursive=True)
                     if client_app_processes:
                         for client_app_process in client_app_processes:
@@ -160,3 +166,6 @@ class FlowerTaskRunner(TaskRunner):
         self.logger.info("Press CTRL+C to stop the server and supernode process.")
         
         termination_event.wait()
+
+        if monitor_thread is not None:  # Ensure the monitor thread is properly terminated
+            monitor_thread.join()
