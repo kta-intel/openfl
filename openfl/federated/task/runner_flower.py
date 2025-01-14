@@ -89,7 +89,7 @@ class FlowerTaskRunner(TaskRunner):
 
         def signal_handler(_sig, _frame):
             """
-            Handles shutdown signals (SIGINT or SIGTERM) to terminate the supernode process and stop the gRPC server.
+            Handles shutdown signals (SIGINT or SIGTERM) to terminate the supernode process and stop the local gRPC server.
 
             Args:
                 _sig: The signal number.
@@ -121,9 +121,9 @@ class FlowerTaskRunner(TaskRunner):
             else:
                 self.logger.info("Supernode process already terminated.")
 
-            self.logger.info("Shutting down gRPC server...")
+            self.logger.info("Shutting down local gRPC server...")
             server.stop(0)
-            self.logger.info("gRPC server stopped.")
+            self.logger.info("local gRPC server stopped.")
             termination_event.set()
 
         signal.signal(signal.SIGINT, signal_handler)
