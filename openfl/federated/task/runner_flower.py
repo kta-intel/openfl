@@ -116,7 +116,11 @@ class FlowerTaskRunner(TaskRunner):
 
         self.logger.info("Press CTRL+C to stop the server and supernode process.")
         
-        termination_event.wait()
+        try:
+            while not termination_event.is_set():
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            signal_handler(signal.SIGINT, None)
 
         if monitor_thread is not None:
             monitor_thread.join()
