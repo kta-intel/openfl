@@ -22,6 +22,7 @@ class FlowerTaskRunner(TaskRunner):
         base_port = 5000
         self.client_port = base_port + self.partition_id
         self.auto_shutdown = auto_shutdown
+        self.shutdown_initiated = False  # Flag to ensure signal handler runs only once
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         local_server_port = kwargs['local_server_port']
@@ -45,6 +46,10 @@ class FlowerTaskRunner(TaskRunner):
         termination_event = threading.Event()
 
         def signal_handler(_sig, _frame):
+            if self.shutdown_initiated:
+                return
+            self.shutdown_initiated = True
+
             self.logger.info("Received shutdown signal. Terminating supernode process...")
 
             if supernode_process.poll() is None:
@@ -124,3 +129,5 @@ class FlowerTaskRunner(TaskRunner):
 
         if monitor_thread is not None:
             monitor_thread.join()
+
+        self.logger.info("Exiting Task Runner")
