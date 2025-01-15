@@ -16,9 +16,9 @@ connector :
       serverappio-api-address : 127.0.0.1:9091
       fleet-api-address :  127.0.0.1:9092 # note [kta-intel]: local gRPC client will connect here
       exec-api-address : 127.0.0.1:9093 # note [kta-intel]: port for server-app toml
-    # flwr_run_params :
-    #   flwr_app_name : "app-pytorch"
-    #   federation_name : "local-poc"
+    flwr_run_params :
+      flwr_app_name : "app-pytorch"
+      federation_name : "local-poc"
 
 collaborator :
   defaults : plan/defaults/collaborator.yaml
