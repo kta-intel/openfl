@@ -42,7 +42,7 @@ class Connector:
         main_process = psutil.Process(os.getpid())
         sub_processes = main_process.children(recursive=True)
         for sub_process in sub_processes:
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             try:
                 self.logger.info(f"[OpenFL Connector] Stopping server process with PID: {sub_process.pid}...")
                 sub_process.terminate()
