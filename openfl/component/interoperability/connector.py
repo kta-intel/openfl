@@ -42,7 +42,7 @@ class Connector:
             main_process = psutil.Process(self._process.pid)
             sub_processes = main_process.children(recursive=True)
             for sub_process in sub_processes:
-                self.logger.info(f"[OpenFL Connector] Stopping server subprocess  with PID: {sub_process.pid}...")
+                self.logger.info(f"[OpenFL Connector] Stopping server subprocess with PID: {sub_process.pid}...")
                 sub_process.terminate()
             _, still_alive = psutil.wait_procs(sub_processes, timeout=1)
             for p in still_alive:

@@ -5,9 +5,9 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from flwr_datasets import FederatedDataset
-from flwr_datasets.partitioner import IidPartitioner
-from torch.utils.data import DataLoader
+# from flwr_datasets import FederatedDataset # NOTE: flwr_dataset will create ~/.flwr/source
+# from flwr_datasets.partitioner import IidPartitioner
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Compose, Normalize, ToTensor
 
 
@@ -32,34 +32,68 @@ class Net(nn.Module):
         return self.fc3(x)
 
 
-fds = None  # Cache FederatedDataset
+# fds = None  # Cache FederatedDataset
 
+
+# def load_data(partition_id: int, num_partitions: int):
+#     """Load partition CIFAR10 data."""
+#     # Only initialize `FederatedDataset` once
+#     global fds
+#     if fds is None:
+#         partitioner = IidPartitioner(num_partitions=num_partitions)
+#         fds = FederatedDataset(
+#             dataset="uoft-cs/cifar10",
+#             partitioners={"train": partitioner},
+#         )
+#     partition = fds.load_partition(partition_id)
+#     # Divide data on each node: 80% train, 20% test
+#     partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
+#     pytorch_transforms = Compose(
+#         [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+#     )
+
+#     def apply_transforms(batch):
+#         """Apply transforms to the partition from FederatedDataset."""
+#         batch["img"] = [pytorch_transforms(img) for img in batch["img"]]
+#         return batch
+
+#     partition_train_test = partition_train_test.with_transform(apply_transforms)
+#     trainloader = DataLoader(partition_train_test["train"], batch_size=32, shuffle=True)
+#     testloader = DataLoader(partition_train_test["test"], batch_size=32)
+#     return trainloader, testloader
+
+class DummyDataset(Dataset):
+    def __init__(self, num_samples, transform=None):
+        self.num_samples = num_samples
+        self.transform = transform
+        self.data = torch.randn(num_samples, 3, 32, 32)  # Random images
+        self.targets = torch.randint(0, 10, (num_samples,))  # Random labels
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        sample = {'img': self.data[idx], 'label': self.targets[idx]}
+        if self.transform:
+            sample['img'] = self.transform(sample['img'])
+        return sample
 
 def load_data(partition_id: int, num_partitions: int):
-    """Load partition CIFAR10 data."""
-    # Only initialize `FederatedDataset` once
-    global fds
-    if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)
-        fds = FederatedDataset(
-            dataset="uoft-cs/cifar10",
-            partitioners={"train": partitioner},
-        )
-    partition = fds.load_partition(partition_id)
-    # Divide data on each node: 80% train, 20% test
-    partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
+    """Load partition dummy CIFAR10 data."""
+    num_samples = 50000 // num_partitions  # Assuming 50,000 samples in total
+    num_train_samples = int(num_samples * 0.8)
+    num_test_samples = num_samples - num_train_samples
+
     pytorch_transforms = Compose(
-        [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        [Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     )
 
-    def apply_transforms(batch):
-        """Apply transforms to the partition from FederatedDataset."""
-        batch["img"] = [pytorch_transforms(img) for img in batch["img"]]
-        return batch
+    train_dataset = DummyDataset(num_train_samples, transform=pytorch_transforms)
+    test_dataset = DummyDataset(num_test_samples, transform=pytorch_transforms)
 
-    partition_train_test = partition_train_test.with_transform(apply_transforms)
-    trainloader = DataLoader(partition_train_test["train"], batch_size=32, shuffle=True)
-    testloader = DataLoader(partition_train_test["test"], batch_size=32)
+    trainloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    testloader = DataLoader(test_dataset, batch_size=32)
+
     return trainloader, testloader
 
 

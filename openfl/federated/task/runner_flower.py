@@ -43,6 +43,7 @@ class FlowerTaskRunner(TaskRunner):
         base_port = 5000
         self.client_port = base_port + self.partition_id
         self.auto_shutdown = auto_shutdown
+        self.patch = kwargs.get('patch')
         self.shutdown_initiated = False  # Flag to ensure signal handler runs only once
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
@@ -67,22 +68,33 @@ class FlowerTaskRunner(TaskRunner):
             3. Stop the gRPC server.
             4. Log the shutdown process and set the termination event to stop the server.
         """
-        local_server_port = kwargs['local_server_port']
+        local_server_port = kwargs.get('local_server_port')
 
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
         grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(LocalGRPCServer(openfl_client, collaborator_name), server)
         server.add_insecure_port(f'[::]:{local_server_port}')
         server.start()
         self.logger.info(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
+        if self.patch:
+            command = [
+                "python",
+                "src/patch/flower_supernode_patch.py",
+                "--insecure",
+                "--grpc-adapter",
+                "--superlink", f"127.0.0.1:{local_server_port}",
+                "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
+                "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
+            ]
+        else:
+            command = [
+                "flower-supernode",
+                "--insecure",
+                "--grpc-adapter",
+                "--superlink", f"127.0.0.1:{local_server_port}",
+                "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
+                "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
+            ]
 
-        command = [
-            "flower-supernode",
-            "--insecure",
-            "--grpc-adapter",
-            "--superlink", f"127.0.0.1:{local_server_port}",
-            "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
-            "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
-        ]
         supernode_process = subprocess.Popen(command, shell=False)
 
         termination_event = threading.Event()

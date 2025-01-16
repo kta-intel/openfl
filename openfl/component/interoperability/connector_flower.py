@@ -2,6 +2,10 @@ import subprocess
 from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
+import os
+# import pdb; pdb.set_trace()
+# os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
+
 class ConnectorFlower(Connector):
     """
     Connector subclass for the Flower framework.
@@ -34,7 +38,10 @@ class ConnectorFlower(Connector):
         Returns:
             list[str]: A list representing the Flower server start command.
         """
-        command = ["flower-superlink", "--fleet-api-type", "grpc-adapter"]
+        if self.superlink_params.get("patch"):
+            command = ["python", "src/patch/flower_superlink_patch.py", "--fleet-api-type", "grpc-adapter"]
+        else:
+            command = ["flower-superlink", "--fleet-api-type", "grpc-adapter"]
 
         if "insecure" in self.superlink_params:
             if self.superlink_params["insecure"]:
@@ -64,8 +71,12 @@ class ConnectorFlower(Connector):
         """
         flwr_app_name = self.flwr_run_params.get("flwr_app_name")
         federation_name = self.flwr_run_params.get("federation_name")
-        
-        command = ["flwr", "run", f"./src/{flwr_app_name}"]
+
+        if self.flwr_run_params.get("patch"):
+            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{flwr_app_name}"]
+        else:
+            command = ["flwr", "run", f"./src/{flwr_app_name}"]
+
         if federation_name:
             command.append(federation_name)
         return command
