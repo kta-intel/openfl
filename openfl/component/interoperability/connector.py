@@ -1,5 +1,7 @@
 import subprocess
 import psutil
+import signal
+import sys
 from logging import getLogger
 
 class Connector:
@@ -20,6 +22,9 @@ class Connector:
         self._process = None
         self.logger = getLogger(__name__)
         self.component_name = component_name
+
+        # Register signal handler for clean termination
+        signal.signal(signal.SIGINT, self._handle_sigint)
 
     def start(self):
         """
@@ -69,3 +74,11 @@ class Connector:
         Print information indicating which Connector component is being used.
         """
         self.logger.info(f"OpenFL Connector Enabled: {self.component_name}")
+
+    def _handle_sigint(self, signum, frame):
+        """
+        Handle the SIGINT signal (Ctrl+C) to cleanly stop the server process and its children.
+        """
+        self.logger.info("[OpenFL Connector] SIGINT received. Terminating server process...")
+        self.stop()
+        sys.exit(0)
