@@ -83,7 +83,9 @@ def patched_build(
 
     toml_contents = tomli_w.dumps(conf)
 
-    with tempfile.NamedTemporaryFile(suffix=".zip", dir='./', delete=False) as temp_file:
+    flwr_home = os.getenv("FLWR_HOME")
+
+    with tempfile.NamedTemporaryFile(suffix=".zip", dir=flwr_home, delete=False) as temp_file:
         temp_filename = temp_file.name
 
         with zipfile.ZipFile(temp_filename, "w", zipfile.ZIP_DEFLATED) as fab_file:
@@ -123,13 +125,14 @@ def patched_build(
     fab_filename = get_fab_filename(conf, fab_hash)
 
     # Once the temporary zip file is created, rename it to the final filename
-    shutil.move(temp_filename, fab_filename)
+    final_path = Path(flwr_home) / fab_filename
+    shutil.move(temp_filename, final_path)
 
     typer.secho(
         f"🎊 Successfully built {fab_filename}", fg=typer.colors.GREEN, bold=True
     )
 
-    return fab_filename, fab_hash
+    return final_path, fab_hash
 
 # def _load_gitignore(app: Path) -> pathspec.PathSpec:
 #     """Load and parse .gitignore file, returning a pathspec."""
