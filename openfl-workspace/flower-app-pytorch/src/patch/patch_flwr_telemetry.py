@@ -1,17 +1,18 @@
 import flwr.common.telemetry
-# import flwr_datasets.common.telemetry
 from pathlib import Path
 import os
 import uuid
 
-def patched_get_source_id() -> str:
+def _get_source_id() -> str:
     """Get existing or new source ID."""
     source_id = "unavailable"
     # Check if .flwr in home exists
 
-    ####
+    ### PATCH ###
+    # REASONING: consolidate written file locations
     if os.getenv("FLWR_HOME"):
         flwr_dir = Path(os.getenv("FLWR_HOME"))
+    #############
     else:
         try:
             home = flwr.common.telemetry._get_home()
@@ -46,5 +47,4 @@ def patched_get_source_id() -> str:
 
     return source_id
 
-flwr.common.telemetry._get_source_id = patched_get_source_id
-# flwr_datasets.common.telemetry._get_source_id = patched_get_source_id
+flwr.common.telemetry._get_source_id = _get_source_id

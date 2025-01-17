@@ -5,7 +5,6 @@ import typer
 from pathlib import Path
 from flwr.cli.utils import is_valid_project_name
 from flwr.cli.config_utils import load_and_validate
-# import pathspec
 import tempfile
 import zipfile
 from flwr.common.constant import FAB_ALLOWED_EXTENSIONS
@@ -14,7 +13,7 @@ import tomli_w
 import hashlib
 import os
 
-def patched_build(
+def build(
     app: Annotated[
         Optional[Path],
         typer.Option(help="Path of the Flower App to bundle into a FAB"),
@@ -83,9 +82,13 @@ def patched_build(
 
     toml_contents = tomli_w.dumps(conf)
 
+    ### PATCH ###
+    # REASONING: original code writes to /tmp/ by default. Writing to flwr_home allows us to consolidate written files
+    # This is useful for running in an SGX enclave with Gramine since we need to strictly control allowed/trusted files
     flwr_home = os.getenv("FLWR_HOME")
-
     with tempfile.NamedTemporaryFile(suffix=".zip", dir=flwr_home, delete=False) as temp_file:
+    #############
+
         temp_filename = temp_file.name
 
         with zipfile.ZipFile(temp_filename, "w", zipfile.ZIP_DEFLATED) as fab_file:
@@ -100,7 +103,11 @@ def patched_build(
                 and f.suffix in FAB_ALLOWED_EXTENSIONS
                 and f.name != "pyproject.toml"  # Exclude the original pyproject.toml
             ]
-
+            ### PATCH ###
+            # REASONING: order matters for creating a hash. This will force consistent ordering of files
+            # For SGX, to distribute the FAB pre-experiment, the hash must be consistent on all systems
+            all_files.sort()
+            #############
             for file_path in all_files:
                 # Read the file content manually
                 with open(file_path, "rb") as f:
@@ -124,8 +131,12 @@ def patched_build(
     # Set the name of the zip file
     fab_filename = get_fab_filename(conf, fab_hash)
 
-    # Once the temporary zip file is created, rename it to the final filename
+    ### PATCH ###
+    # REASONING: original code writes to /tmp/ by default. Writing to flwr_home allows us to consolidate written files
+    # Also, return final_path
     final_path = Path(flwr_home) / fab_filename
+    #############
+
     shutil.move(temp_filename, final_path)
 
     typer.secho(
@@ -134,13 +145,5 @@ def patched_build(
 
     return final_path, fab_hash
 
-# def _load_gitignore(app: Path) -> pathspec.PathSpec:
-#     """Load and parse .gitignore file, returning a pathspec."""
-#     gitignore_path = app / ".gitignore"
-#     patterns = ["__pycache__/"]  # Default pattern
-#     if gitignore_path.exists():
-#         with open(gitignore_path, encoding="UTF-8") as file:
-#             patterns.extend(file.readlines())
-#     return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
-flwr.cli.build.build = patched_build
+flwr.cli.build.build = build
