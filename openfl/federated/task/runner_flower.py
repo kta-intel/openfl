@@ -13,6 +13,7 @@ import time
 
 import os
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
+os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
 
 class FlowerTaskRunner(TaskRunner):
     """

@@ -4,6 +4,7 @@ from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCCl
 
 import os
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
+os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
 
 class ConnectorFlower(Connector):
     """
