@@ -3,8 +3,7 @@ from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
 import os
-# import pdb; pdb.set_trace()
-# os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
+os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 
 class ConnectorFlower(Connector):
     """

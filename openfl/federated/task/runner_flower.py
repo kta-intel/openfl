@@ -11,6 +11,8 @@ import threading
 import psutil
 import time
 
+import os
+os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 
 class FlowerTaskRunner(TaskRunner):
     """
