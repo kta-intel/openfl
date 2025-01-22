@@ -62,7 +62,7 @@ class FlowerTaskRunner(TaskRunner):
         1. Starts a local gRPC server to handle communication between the OpenFL client and the Flower SuperNode.
         2. Launches the Flower SuperNode in a subprocess.
         3. Sets up signal handlers for manual shutdown (via CTRL+C).
-        4. If auto_shutdown is enabled, monitors subprocess activity and initiates shutdown if no new subprocess starts within the expected time frame.
+        4. If auto_shutdown is enabled, monitors run activity and initiates shutdown if no new runs start within the expected time frame.
 
         Shutdown Process:
         - When a shutdown signal (SIGINT or SIGTERM) is received, the method will:
@@ -98,7 +98,10 @@ class FlowerTaskRunner(TaskRunner):
                 "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
             ]
 
-        supernode_process = subprocess.Popen(command, shell=False)
+        if self.auto_shutdown:
+            supernode_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False)
+        else:
+            supernode_process = subprocess.Popen(command, shell=False)
 
         termination_event = threading.Event()
 
@@ -147,43 +150,61 @@ class FlowerTaskRunner(TaskRunner):
         monitor_thread = None
 
         if self.auto_shutdown:
-            self.logger.info("Automatic shutdown enabled. Monitoring subprocess activity...")
+            self.logger.info("Automatic shutdown enabled. Monitoring runs...")
 
-            def monitor_subprocesses():
+            def monitor_runs():
                 """
-                Monitors the activity of subprocesses and initiates shutdown if no new subprocess starts within the expected time frame.
+                Monitors the activity of the runs and initiates shutdown if no new run starts within the expected time frame.
                 """
-                try:
-                    main_subprocess = psutil.Process(supernode_process.pid)
-                except psutil.NoSuchProcess:
-                    return
+                start_time = None
+                total_time = 0
+                run_count = 0
+                average_time = 0
+                checking_time = False
 
-                previous_end_time = None
-                intervals = []
-
-                while not termination_event.is_set():
-                    client_app_processes = main_subprocess.children(recursive=True)
-                    if client_app_processes:
-                        for client_app_process in client_app_processes:
-                            client_app_process.wait()
-                            end_time = time.time()
-                            if previous_end_time is not None:
-                                interval = end_time - previous_end_time
-                                intervals.append(interval)
-                            previous_end_time = end_time
-
-                    if previous_end_time is not None:
-                        running_timer = time.time() - previous_end_time
-                        if intervals:
-                            average_interval = sum(intervals) / len(intervals)
-                            if running_timer > 2 * average_interval:
-                                self.logger.info("No new subprocess started within the expected time. Initiating shutdown...")
+                def check_time():
+                    nonlocal start_time, average_time, checking_time
+                    while True:
+                        if checking_time and start_time is not None:
+                            elapsed_time = time.time() - start_time
+                            if elapsed_time > 2 * average_time and average_time > 0:
+                                self.logger.info("No new run started started within the expected time. Initiating shutdown...")
                                 signal_handler(signal.SIGTERM, None)
                                 return
+                        time.sleep(1)  # Check every second
 
-                    time.sleep(1)
+                # Start a thread to continuously check the elapsed time
+                time_check_thread = threading.Thread(target=check_time)
+                time_check_thread.daemon = True
+                time_check_thread.start()
 
-            monitor_thread = threading.Thread(target=monitor_subprocesses)
+                while not termination_event.is_set():
+                    output = supernode_process.stdout.readline()
+                    if output == b'' and supernode_process.poll() is not None:
+                        break
+                    if output:
+                        decoded_output = output.decode('utf-8').strip()
+                        print(decoded_output)  # Print the output to the terminal
+
+                        # Check for RUN message
+                        if "RUN" in decoded_output:
+                            if start_time is not None:
+                                end_time = time.time()
+                                run_time = end_time - start_time
+                                total_time += run_time
+                                run_count += 1
+                                average_time = total_time / run_count
+
+                                # Reset the start time for the new RUN
+                                start_time = end_time
+                                checking_time = False  # Stop checking as a new RUN has started
+
+                        # Start the timer after "Sent reply" is detected
+                        if "Sent reply" in decoded_output:
+                            start_time = time.time()
+                            checking_time = True  # Start checking the elapsed time
+
+            monitor_thread = threading.Thread(target=monitor_runs)
             monitor_thread.start()
 
         self.logger.info("Press CTRL+C to stop the server and supernode process.")
