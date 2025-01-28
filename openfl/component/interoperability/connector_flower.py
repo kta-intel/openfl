@@ -29,6 +29,7 @@ class ConnectorFlower(Connector):
         
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
         self.flwr_run_process = None
+        # import pdb; pdb.set_trace()
 
     def _build_command(self) -> list[str]:
         """
@@ -79,6 +80,8 @@ class ConnectorFlower(Connector):
 
         if federation_name:
             command.append(federation_name)
+
+        # import pdb; pdb.set_trace()
         return command
 
     def start(self):

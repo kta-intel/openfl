@@ -1,3 +1,4 @@
+import threading
 import grpc
 from concurrent.futures import ThreadPoolExecutor
 from flwr.proto import grpcadapter_pb2_grpc
@@ -7,11 +8,10 @@ from openfl.transport.grpc.connector.flower.local_grpc_server import LocalGRPCSe
 import subprocess
 from logging import getLogger
 import signal
-import threading
 import psutil
 import time
-
 import os
+
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
 
@@ -48,6 +48,7 @@ class FlowerTaskRunner(TaskRunner):
         self.auto_shutdown = auto_shutdown
         self.patch = kwargs.get('patch')
         self.shutdown_initiated = False  # Flag to ensure signal handler runs only once
+        self.shutdown_requested = False
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         """
@@ -73,11 +74,23 @@ class FlowerTaskRunner(TaskRunner):
         """
         local_server_port = kwargs.get('local_server_port')
 
+        def message_callback():
+            """
+            Callback function to handle messaging events.
+            If auto_shutdown is enabled, logs a message indicating that the final reply 
+            has been sent and triggers the SIGTERM signal handler to initiate shutdown.
+            """
+            # self.logger.info("Final reply sent")
+            self.shutdown_requested = True
+
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
-        grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(LocalGRPCServer(openfl_client, collaborator_name), server)
+        grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(
+            LocalGRPCServer(openfl_client, collaborator_name, message_callback), server
+        )
         server.add_insecure_port(f'[::]:{local_server_port}')
         server.start()
         self.logger.info(f"OpenFL local gRPC server started, listening on port {local_server_port}.")
+
         if self.patch:
             command = [
                 "python",
@@ -105,16 +118,14 @@ class FlowerTaskRunner(TaskRunner):
         def signal_handler(_sig, _frame):
             """
             Handles shutdown signals (SIGINT or SIGTERM) to terminate the supernode process and stop the local gRPC server.
-
             Args:
                 _sig: The signal number.
                 _frame: The current stack frame (not used).
             """
             if self.shutdown_initiated:
+                # Avoid running the shutdown process multiple times
                 return
             self.shutdown_initiated = True
-
-            self.logger.info("Received shutdown signal. Terminating supernode process...")
 
             try:
                 if supernode_process.poll() is None:
@@ -123,12 +134,12 @@ class FlowerTaskRunner(TaskRunner):
                         client_app_processes = main_subprocess.children(recursive=True)
                         for client_app_process in client_app_processes:
                             client_app_process.terminate()
-                        _, still_alive = psutil.wait_procs(client_app_processes, timeout=1)
+                        _, still_alive = psutil.wait_procs(client_app_processes, timeout=1) 
                         for p in still_alive:
                             p.kill()
                         supernode_process.terminate()
                         try:
-                            supernode_process.wait(timeout=1)
+                            supernode_process.wait(timeout=1) 
                         except subprocess.TimeoutExpired:
                             supernode_process.kill()
                         self.logger.info("Supernode process terminated.")
@@ -136,9 +147,7 @@ class FlowerTaskRunner(TaskRunner):
                         self.logger.info("Supernode process already terminated.")
                 else:
                     self.logger.info("Supernode process already terminated.")
-            except Exception as e:
-                self.logger.error(f"Error during graceful shutdown: {e}")
-                self.logger.info("Attempting forceful termination of supernode process...")
+            except Exception:
                 supernode_process.kill()
                 self.logger.info("Supernode process forcefully terminated.")
 
@@ -150,57 +159,12 @@ class FlowerTaskRunner(TaskRunner):
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        monitor_thread = None
-
-        if self.auto_shutdown:
-            self.logger.info("Automatic shutdown enabled. Monitoring subprocess activity...")
-
-            def monitor_subprocesses():
-                """
-                Monitors the activity of subprocesses and initiates shutdown if no new subprocess starts within the expected time frame.
-                """
-                try:
-                    main_subprocess = psutil.Process(supernode_process.pid)
-                except psutil.NoSuchProcess:
-                    return
-
-                previous_end_time = None
-                intervals = []
-
-                while not termination_event.is_set():
-                    client_app_processes = main_subprocess.children(recursive=True)
-                    if client_app_processes:
-                        for client_app_process in client_app_processes:
-                            client_app_process.wait()
-                            end_time = time.time()
-                            if previous_end_time is not None:
-                                interval = end_time - previous_end_time
-                                intervals.append(interval)
-                            previous_end_time = end_time
-
-                    if previous_end_time is not None:
-                        running_timer = time.time() - previous_end_time
-                        if intervals:
-                            average_interval = sum(intervals) / len(intervals)
-                            if running_timer > 2 * average_interval:
-                                self.logger.info("No new subprocess started within the expected time. Initiating shutdown...")
-                                signal_handler(signal.SIGTERM, None)
-                                return
-
-                    time.sleep(1)
-
-            monitor_thread = threading.Thread(target=monitor_subprocesses)
-            monitor_thread.start()
-
         self.logger.info("Press CTRL+C to stop the server and supernode process.")
         
         try:
             while not termination_event.is_set():
+                if self.shutdown_requested:
+                    signal_handler(signal.SIGTERM, None)
                 time.sleep(0.1)
         except KeyboardInterrupt:
             signal_handler(signal.SIGINT, None)
-
-        if monitor_thread is not None:
-            monitor_thread.join()
-
-        self.logger.info("Exiting Task Runner")
