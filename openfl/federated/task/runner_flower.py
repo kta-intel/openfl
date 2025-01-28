@@ -47,8 +47,8 @@ class FlowerTaskRunner(TaskRunner):
         self.client_port = base_port + self.partition_id
         self.auto_shutdown = auto_shutdown
         self.patch = kwargs.get('patch')
-        self.shutdown_initiated = False  # Flag to ensure signal handler runs only once
-        self.shutdown_requested = False
+        self.shutdown_initiated = False # Flag to ensure signal handler runs only once
+        self.shutdown_requested = False # Flag signal shutdown
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
         """
@@ -80,8 +80,8 @@ class FlowerTaskRunner(TaskRunner):
             If auto_shutdown is enabled, logs a message indicating that the final reply 
             has been sent and triggers the SIGTERM signal handler to initiate shutdown.
             """
-            # self.logger.info("Final reply sent")
-            self.shutdown_requested = True
+            if self.auto_shutdown:
+                self.shutdown_requested = True
 
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
         grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(
@@ -147,7 +147,8 @@ class FlowerTaskRunner(TaskRunner):
                         self.logger.info("Supernode process already terminated.")
                 else:
                     self.logger.info("Supernode process already terminated.")
-            except Exception:
+            except Exception as e:
+                self.logger.debug(f"Error during graceful shutdown: {e}")
                 supernode_process.kill()
                 self.logger.info("Supernode process forcefully terminated.")
 

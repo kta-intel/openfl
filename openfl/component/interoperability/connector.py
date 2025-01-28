@@ -45,7 +45,6 @@ class Connector:
             try:
                 self.logger.info(f"[OpenFL Connector] Stopping server process with PID: {self._process.pid}...")
                 # find and terminate sub_process processes
-                # main_process = psutil.Process('error')
                 main_process = psutil.Process(self._process.pid)
                 sub_processes = main_process.children(recursive=True)
                 for sub_process in sub_processes:
@@ -62,7 +61,8 @@ class Connector:
                     self._process.kill()
                 self._process = None
                 self.logger.info("[OpenFL Connector] Server process stopped.")
-            except Exception:
+            except Exception as e:
+                self.logger.debug(f"[OpenFL Connector] Error during graceful shutdown: {e}")
                 self._process.kill()
                 self.logger.info("[OpenFL Connector] Server process forcefully terminated.")
         else:

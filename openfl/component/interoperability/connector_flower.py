@@ -1,4 +1,5 @@
 import subprocess
+import toml
 from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
@@ -12,30 +13,48 @@ class ConnectorFlower(Connector):
     Responsible for generating the Flower server command.
     """
 
-    def __init__(self, superlink_params: dict, flwr_run_params: dict = None, **kwargs):
+    def __init__(self, flwr_app_name: dict, superlink_params: dict, flwr_run_params: dict = None, **kwargs):
         """
         Initialize ConnectorFlower by building the server command from the superlink_params.
         Args:
             superlink_params (dict): A dictionary of Flower server settings.
             flwr_run_params (dict, optional): A dictionary containing the Flower run parameters. Defaults to None.
         """
+        self.flwr_app_name = flwr_app_name
         self.superlink_params = superlink_params
         self.flwr_run_params = flwr_run_params
         command = self._build_command()
+
         super().__init__(command, component_name="Flower")
         
-        connector_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
-        self.local_grpc_client = LocalGRPCClient(connector_address)
-        
+        self.local_grpc_client = self._get_local_grpc_client()
+
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
         self.flwr_run_process = None
-        # import pdb; pdb.set_trace()
+
+    def _get_local_grpc_client(self):
+        """
+        Create and return a LocalGRPCClient instance based on superlink_params
+        and the number of server rounds from the pyproject.toml file.
+
+        Returns:
+            LocalGRPCClient: An instance of LocalGRPCClient initialized with the
+                             connector address and number of server rounds.
+        """
+        connector_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
+
+        # Load in the number of server rounds from the pyproject.toml file
+        toml_file_path = os.path.join('src', self.flwr_app_name, 'pyproject.toml')
+        toml_data = toml.load(toml_file_path)
+
+        num_server_rounds = toml_data['tool']['flwr']['app']['config']['num-server-rounds']
+
+        return LocalGRPCClient(connector_address, num_server_rounds)
 
     def _build_command(self) -> list[str]:
         """
-        Start the Flower SuperLink based on settings.
-        Args:
-            superlink_params (dict): Settings to configure the Flower server.
+        Start the Flower SuperLink based on superlink_params.
+
         Returns:
             list[str]: A list representing the Flower server start command.
         """
@@ -67,16 +86,16 @@ class ConnectorFlower(Connector):
     def _build_flwr_run_command(self) -> list[str]:
         """
         Build the `flwr run` command to run the Flower application.
+        
         Returns:
             list[str]: A list representing the flwr_run command.
         """
-        flwr_app_name = self.flwr_run_params.get("flwr_app_name")
         federation_name = self.flwr_run_params.get("federation_name")
 
         if self.flwr_run_params.get("patch"):
-            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{flwr_app_name}"]
+            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{self.flwr_app_name}"]
         else:
-            command = ["flwr", "run", f"./src/{flwr_app_name}"]
+            command = ["flwr", "run", f"./src/{self.flwr_app_name}"]
 
         if federation_name:
             command.append(federation_name)

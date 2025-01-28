@@ -51,18 +51,18 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         """
         while True:
             request, response_queue = self.request_queue.get()
-            deserialized_message = deserialize_flower_message(request)
+            # deserialized_message = deserialize_flower_message(request)
             openfl_request = flower_to_openfl_message(request, header=None)
 
             # Send request to the OpenFL server
             openfl_response = self.openfl_client.send_message_to_server(openfl_request, self.collaborator_name)
+
+            # Check to end experiment
+            if hasattr(openfl_response, 'metadata'):
+                if openfl_response.metadata['end_experiment'] == 'True':
+                    self.message_callback()
+
             # Send response to Flower client
             flower_response = openfl_to_flower_message(openfl_response)
-            # Check for the specific conditions
-            if hasattr(deserialized_message, 'task_res_list'):
-                for task_res in deserialized_message.task_res_list:
-                    # TODO: this needs to be able to be set by the plan or the toml, not hard coded in the local grpc server
-                    if task_res.group_id == "3" and task_res.task.task_type == "evaluate":
-                        self.message_callback()
             response_queue.put(flower_response)
             self.request_queue.task_done()
