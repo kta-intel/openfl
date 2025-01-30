@@ -9,6 +9,7 @@ import torch.nn.functional as F
 # from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Compose, Normalize, ToTensor
+import os
 
 
 class Net(nn.Module):
@@ -33,7 +34,6 @@ class Net(nn.Module):
 
 
 # fds = None  # Cache FederatedDataset
-
 
 # def load_data(partition_id: int, num_partitions: int):
 #     """Load partition CIFAR10 data."""
@@ -60,40 +60,40 @@ class Net(nn.Module):
 #     partition_train_test = partition_train_test.with_transform(apply_transforms)
 #     trainloader = DataLoader(partition_train_test["train"], batch_size=32, shuffle=True)
 #     testloader = DataLoader(partition_train_test["test"], batch_size=32)
+#     import pdb; pdb.set_trace()
 #     return trainloader, testloader
 
-class DummyDataset(Dataset):
-    def __init__(self, num_samples, transform=None):
-        self.num_samples = num_samples
-        self.transform = transform
-        self.data = torch.randn(num_samples, 3, 32, 32)  # Random images
-        self.targets = torch.randint(0, 10, (num_samples,))  # Random labels
 
-    def __len__(self):
-        return self.num_samples
+def load_partition_data(partition_id):
+    partition_dir = os.path.join('./data', f"{partition_id}")
+    
+    train_data_path = os.path.join(partition_dir, "train.pt")
+    test_data_path = os.path.join(partition_dir, "test.pt")
+    
+    train_data = torch.load(train_data_path)
+    test_data = torch.load(test_data_path)
+    
+    return train_data, test_data
 
-    def __getitem__(self, idx):
-        sample = {'img': self.data[idx], 'label': self.targets[idx]}
-        if self.transform:
-            sample['img'] = self.transform(sample['img'])
-        return sample
 
 def load_data(partition_id: int, num_partitions: int):
-    """Load partition dummy CIFAR10 data."""
-    num_samples = 50000 // num_partitions  # Assuming 50,000 samples in total
-    num_train_samples = int(num_samples * 0.8)
-    num_test_samples = num_samples - num_train_samples
-
+    """Load partition CIFAR10 data."""
+    train_data, test_data = load_partition_data(partition_id)
     pytorch_transforms = Compose(
-        [Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     )
 
-    train_dataset = DummyDataset(num_train_samples, transform=pytorch_transforms)
-    test_dataset = DummyDataset(num_test_samples, transform=pytorch_transforms)
+    def apply_transforms(batch):
+        """Apply transforms to the partition from FederatedDataset."""
+        batch["img"] = [pytorch_transforms(img) for img in batch["img"]]
+        return batch
 
-    trainloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    testloader = DataLoader(test_dataset, batch_size=32)
+    train_data = train_data.with_transform(apply_transforms)
+    test_data = test_data.with_transform(apply_transforms)
 
+    trainloader = DataLoader(train_data, batch_size=32, shuffle=True)
+    testloader = DataLoader(test_data, batch_size=32)
+    import pdb; pdb.set_trace()
     return trainloader, testloader
 
 
