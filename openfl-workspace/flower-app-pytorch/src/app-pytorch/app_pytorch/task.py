@@ -93,7 +93,6 @@ def load_data(partition_id: int, num_partitions: int):
 
     trainloader = DataLoader(train_data, batch_size=32, shuffle=True)
     testloader = DataLoader(test_data, batch_size=32)
-    import pdb; pdb.set_trace()
     return trainloader, testloader
 
 
