@@ -1170,20 +1170,20 @@ class Aggregator:
 
         if not self.is_connector_available():
         # Compute all validation related metrics
-          logs = {}
-          for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
-              logs.update(self._compute_validation_related_task_metrics(task_name))
+            logs = {}
+            for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+                logs.update(self._compute_validation_related_task_metrics(task_name))
 
-        # End of round callbacks.
-        self.callbacks.on_round_end(self.round_number, logs)
+            # End of round callbacks.
+            self.callbacks.on_round_end(self.round_number, logs)
 
         # Once all of the task results have been processed
         self._end_of_round_check_done[self.round_number] = True
 
         # Save the latest model
         if not self.is_connector_available():
-          logger.info("Saving round %s model...", self.round_number)
-          self._save_model(self.round_number, self.last_state_path)
+            logger.info("Saving round %s model...", self.round_number)
+            self._save_model(self.round_number, self.last_state_path)
 
         self.round_number += 1
         # resetting stragglers for task for a new round
