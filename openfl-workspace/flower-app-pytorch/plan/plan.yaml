@@ -6,7 +6,8 @@ aggregator :
   template : openfl.component.Aggregator
   settings :
     rounds_to_train : 1 # DO NOT EDIT. This is to indicate OpenFL communication rounds
-    persist_checkpoint: false
+    persist_checkpoint : false
+    write_logs : false
 
 connector : 
   defaults : plan/defaults/connector.yaml
