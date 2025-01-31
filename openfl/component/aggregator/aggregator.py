@@ -10,7 +10,7 @@ from threading import Lock
 from typing import List, Optional
 
 import openfl.callbacks as callbacks_module
-from openfl.component.straggler_handling_functions import CutoffTimeBasedStragglerHandling
+from openfl.component.aggregator.straggler_handling import CutoffTimePolicy, StragglerPolicy
 from openfl.databases import PersistentTensorDB, TensorDB
 from openfl.interface.aggregation_functions import WeightedAverage
 from openfl.pipelines import NoCompressionPipeline, TensorCodec
@@ -75,7 +75,7 @@ class Aggregator:
         assigner,
         connector,
         use_delta_updates=True,
-        straggler_handling_policy=None,
+        straggler_handling_policy: StragglerPolicy = CutoffTimePolicy,
         rounds_to_train=256,
         single_col_cert_common_name=None,
         compression_pipeline=None,
@@ -102,7 +102,6 @@ class Aggregator:
                 weight.
             assigner: Assigner object.
             straggler_handling_policy (optional): Straggler handling policy.
-                Defaults to CutoffTimeBasedStragglerHandling.
             rounds_to_train (int, optional): Number of rounds to train.
                 Defaults to 256.
             single_col_cert_common_name (str, optional): Common name for single
@@ -129,18 +128,26 @@ class Aggregator:
         # FIXME: "" instead of None is for protobuf compatibility.
         self.single_col_cert_common_name = single_col_cert_common_name or ""
 
-        self.straggler_handling_policy = (
-            straggler_handling_policy or CutoffTimeBasedStragglerHandling()
-        )
-        self._end_of_round_check_done = [False] * rounds_to_train
-        self.stragglers = []
+        self.straggler_handling_policy = straggler_handling_policy()
 
         self.rounds_to_train = rounds_to_train
+        if self.task_group == "evaluation":
+            self.rounds_to_train = 1
+            logger.info(
+                f"task_group is {self.task_group}, setting rounds_to_train = {self.rounds_to_train}"
+            )
+
+        self._end_of_round_check_done = [False] * rounds_to_train
+        self.stragglers = []
 
         # if the collaborator requests a delta, this value is set to true
         self.authorized_cols = authorized_cols
         self.uuid = aggregator_uuid
         self.federation_uuid = federation_uuid
+        # # override the assigner selected_task_group
+        # # FIXME check the case of CustomAssigner as base class Assigner is redefined
+        # # and doesn't have selected_task_group as attribute
+        # assigner.selected_task_group = task_group
         self.assigner = assigner
         self.connector = connector
         self.quit_job_sent_to = []
@@ -360,6 +367,7 @@ class Aggregator:
         ]
         tensor_dict = {}
         tensor_tuple_dict = {}
+        next_round_tensors = {}
         for tk in tensor_keys:
             tk_name, _, _, _, _ = tk
             tensor_value = self.tensor_db.get_tensor_from_cache(tk)
@@ -381,7 +389,7 @@ class Aggregator:
                         self.next_model_round_number, ("model",)
                     )
                 self.persistent_db.finalize_round(
-                    tensor_tuple_dict, next_round_tensors, self.round_number, self.best_model_score
+                    tensor_tuple_dict, next_round_tensors, round_number, self.best_model_score
                 )
                 logger.info(
                     "Persist model and clean task result for round %s",

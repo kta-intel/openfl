@@ -1,13 +1,10 @@
 #---------------------------------------------------------------------------
 # Workflow to run 301_MNIST_Watermarking notebook
-# Authors - Noopur, Payal Chaurasiya
 #---------------------------------------------------------------------------
 name: Federated Runtime 301 MNIST Watermarking
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-
+  workflow_call:
   workflow_dispatch:
 
 permissions:
