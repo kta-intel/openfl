@@ -71,7 +71,7 @@ def deserialize_flower_message(flower_message):
         print(f"Failed to deserialize message content. Error: {e}")
         return None
 
-    # # Save the message to a log file
+    # Save the message to a log file
     # log_filename = get_next_log_filename()
     # save_message_to_log(message, log_filename)
     # print(f"Message saved to {log_filename}")

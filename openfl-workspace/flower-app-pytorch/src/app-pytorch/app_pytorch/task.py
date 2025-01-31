@@ -1,13 +1,14 @@
 """app-pytorch: A Flower / PyTorch app."""
 
 from collections import OrderedDict
+from datasets import load_from_disk
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from flwr_datasets import FederatedDataset # NOTE: flwr_dataset will create ~/.flwr/source
 # from flwr_datasets.partitioner import IidPartitioner
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader # Dataset
 from torchvision.transforms import Compose, Normalize, ToTensor
 import os
 
@@ -64,14 +65,14 @@ class Net(nn.Module):
 #     return trainloader, testloader
 
 
-def load_partition_data(partition_id):
-    partition_dir = os.path.join('./data', f"{partition_id}")
+def load_partition_data(partition_id, data_dir="data"):
+    partition_dir = os.path.join(data_dir, f"{partition_id}")
     
-    train_data_path = os.path.join(partition_dir, "train.pt")
-    test_data_path = os.path.join(partition_dir, "test.pt")
+    train_data_path = os.path.join(partition_dir, "train")
+    test_data_path = os.path.join(partition_dir, "test")
     
-    train_data = torch.load(train_data_path)
-    test_data = torch.load(test_data_path)
+    train_data = load_from_disk(train_data_path)
+    test_data = load_from_disk(test_data_path)
     
     return train_data, test_data
 

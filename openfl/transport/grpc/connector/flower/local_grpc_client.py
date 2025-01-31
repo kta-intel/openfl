@@ -35,11 +35,12 @@ class LocalGRPCClient:
         flower_message = openfl_to_flower_message(openfl_message)
         deserialized_message = deserialize_flower_message(flower_message)
 
-        # Check if clients completes last task for final round
-        if hasattr(deserialized_message, 'task_res_list'):
-            for task_res in deserialized_message.task_res_list:
-                if task_res.group_id == str(self.num_server_rounds) and task_res.task.task_type == "evaluate":
-                    self.end_experiment = True
+        # Check if clients completes the evaluation task for the final server round
+        if hasattr(deserialized_message, 'messages_list'):
+            self.end_experiment = any(
+                message.metadata.group_id == str(self.num_server_rounds) and message.metadata.message_type == "evaluate"
+                for message in deserialized_message.messages_list
+            )
 
         flower_response = self.superlink_stub.SendReceive(flower_message)
         openfl_response = flower_to_openfl_message(flower_response, header=header, end_experiment=self.end_experiment)

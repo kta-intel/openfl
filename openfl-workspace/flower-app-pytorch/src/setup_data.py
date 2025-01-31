@@ -1,6 +1,5 @@
 import os
 import sys
-import torch
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 
@@ -23,11 +22,11 @@ def main(num_partitions):
         partition_dir = os.path.join(save_dir, f"{partition_id}")
         os.makedirs(partition_dir, exist_ok=True)
         
-        train_data_path = os.path.join(partition_dir, "train.pt")
-        test_data_path = os.path.join(partition_dir, "test.pt")
+        train_data_path = os.path.join(partition_dir, "train")
+        test_data_path = os.path.join(partition_dir, "test")
         
-        torch.save(partition_train_test["train"], train_data_path)
-        torch.save(partition_train_test["test"], test_data_path)
+        partition_train_test["train"].save_to_disk(train_data_path)
+        partition_train_test["test"].save_to_disk(test_data_path)
 
     # Download, split, and save the dataset
     for partition_id in range(num_partitions):
