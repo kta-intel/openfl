@@ -122,31 +122,49 @@ class FlowerTaskRunner(TaskRunner):
                 _sig: The signal number.
                 _frame: The current stack frame (not used).
             """
+            # Avoid running the shutdown process multiple times
             if self.shutdown_initiated:
-                # Avoid running the shutdown process multiple times
                 return
             self.shutdown_initiated = True
+
+            def terminate_process(process, timeout=5):
+                """
+                Helper function to terminate a process gracefully.
+                Args:
+                    process: The process to terminate.
+                    timeout: The timeout for waiting for the process to terminate.
+                """
+                try:
+                    process.terminate()
+                    process.wait(timeout=timeout)
+                except (psutil.NoSuchProcess, subprocess.TimeoutExpired):
+                    process.kill()
 
             try:
                 if supernode_process.poll() is None:
                     try:
                         main_subprocess = psutil.Process(supernode_process.pid)
                         client_app_processes = main_subprocess.children(recursive=True)
+                        
+                        # Wait for client app processes to complete
                         for client_app_process in client_app_processes:
-                            client_app_process.terminate()
-                        _, still_alive = psutil.wait_procs(client_app_processes, timeout=1) 
-                        for p in still_alive:
-                            p.kill()
-                        supernode_process.terminate()
-                        try:
-                            supernode_process.wait(timeout=1) 
-                        except subprocess.TimeoutExpired:
-                            supernode_process.kill()
+                            try:
+                                client_app_process.wait(timeout=5)
+                            except psutil.NoSuchProcess:
+                                pass
+                        
+                        # Terminate client app processes if they are still running
+                        for client_app_process in client_app_processes:
+                            if client_app_process.is_running():
+                                terminate_process(client_app_process)
+                        
+                        # Terminate the supernode process
+                        terminate_process(supernode_process)
                         self.logger.info("Supernode process terminated.")
                     except psutil.NoSuchProcess:
-                        self.logger.info("Supernode process already terminated.")
+                        self.logger.info("Supernode process already terminated 2.")
                 else:
-                    self.logger.info("Supernode process already terminated.")
+                    self.logger.info("Supernode process already terminated 1.")
             except Exception as e:
                 self.logger.debug(f"Error during graceful shutdown: {e}")
                 supernode_process.kill()
