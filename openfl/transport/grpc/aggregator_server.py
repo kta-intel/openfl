@@ -71,7 +71,6 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
             use_connector (bool): whether to use framework interopability mode
             **kwargs: Additional keyword arguments.
         """
-        print(f"{use_tls=}")
         self.aggregator = aggregator
         self.uri = f"[::]:{agg_port}"
         self.use_tls = use_tls
