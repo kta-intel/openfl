@@ -3,7 +3,6 @@ import queue
 import grpc
 from flwr.proto import grpcadapter_pb2_grpc
 from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
-from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
 
 class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
     """ 
@@ -51,7 +50,6 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         """
         while True:
             request, response_queue = self.request_queue.get()
-            # deserialized_message = deserialize_flower_message(request)
             openfl_request = flower_to_openfl_message(request, header=None)
 
             # Send request to the OpenFL server

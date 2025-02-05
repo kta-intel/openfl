@@ -137,38 +137,37 @@ class FlowerTaskRunner(TaskRunner):
                 try:
                     process.terminate()
                     process.wait(timeout=timeout)
-                except (psutil.NoSuchProcess, subprocess.TimeoutExpired):
+                except:
                     process.kill()
 
-            try:
-                if supernode_process.poll() is None:
-                    try:
-                        main_subprocess = psutil.Process(supernode_process.pid)
-                        client_app_processes = main_subprocess.children(recursive=True)
-                        
-                        # Wait for client app processes to complete
-                        for client_app_process in client_app_processes:
-                            try:
-                                client_app_process.wait(timeout=5)
-                            except psutil.NoSuchProcess:
-                                pass
-                        
-                        # Terminate client app processes if they are still running
-                        for client_app_process in client_app_processes:
-                            if client_app_process.is_running():
-                                terminate_process(client_app_process)
-                        
-                        # Terminate the supernode process
-                        terminate_process(supernode_process)
-                        self.logger.info("Supernode process terminated.")
-                    except psutil.NoSuchProcess:
-                        self.logger.info("Supernode process already terminated 2.")
-                else:
-                    self.logger.info("Supernode process already terminated 1.")
-            except Exception as e:
-                self.logger.debug(f"Error during graceful shutdown: {e}")
-                supernode_process.kill()
-                self.logger.info("Supernode process forcefully terminated.")
+            if supernode_process.poll() is None:
+                try:
+                    main_subprocess = psutil.Process(supernode_process.pid)
+                    client_app_processes = main_subprocess.children(recursive=True)
+                    
+                    # Wait for client app processes to complete
+                    for client_app_process in client_app_processes:
+                        try:
+                            client_app_process.wait(timeout=5)
+                        except psutil.NoSuchProcess:
+                            pass
+                    
+                    # Terminate client app processes if they are still running
+                    for client_app_process in client_app_processes:
+                        if client_app_process.is_running():
+                            terminate_process(client_app_process)
+                    
+                    # Terminate the supernode process
+                    terminate_process(main_subprocess)
+                    self.logger.info("Supernode process terminated.")
+                except Exception as e:
+                    self.logger.info(f"Error during graceful shutdown: {e}")
+                    # Directly shutdown the supernode_process
+                    # Gramine does not detect psutil.Process
+                    terminate_process(supernode_process)
+                    self.logger.info("Supernode process forcefully terminated.")
+            else:
+                self.logger.info("Supernode process already terminated 1.")
 
             self.logger.info("Shutting down local gRPC server...")
             server.stop(0)
