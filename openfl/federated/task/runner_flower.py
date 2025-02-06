@@ -164,6 +164,7 @@ class FlowerTaskRunner(TaskRunner):
                     self.logger.info(f"Error during graceful shutdown: {e}")
                     # Directly shutdown the supernode_process
                     # Gramine does not detect psutil.Process
+                    time.sleep(10)
                     terminate_process(supernode_process)
                     self.logger.info("Supernode process forcefully terminated.")
             else:
