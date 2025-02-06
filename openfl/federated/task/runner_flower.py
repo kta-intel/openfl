@@ -67,8 +67,8 @@ class FlowerTaskRunner(TaskRunner):
 
         Shutdown Process:
         - When a shutdown signal (SIGINT or SIGTERM) is received, the method will:
-            1. Terminate all child processes of the supernode subprocess.
-            2. Terminate the main supernode subprocess.
+            1. Terminate all child processes of the SuperNode subprocess.
+            2. Terminate the main SuperNode subprocess.
             3. Stop the gRPC server.
             4. Log the shutdown process and set the termination event to stop the server.
         """
@@ -117,15 +117,11 @@ class FlowerTaskRunner(TaskRunner):
 
         def signal_handler(_sig, _frame):
             """
-            Handles shutdown signals (SIGINT or SIGTERM) to terminate the supernode process and stop the local gRPC server.
+            Handles shutdown signals (SIGINT or SIGTERM) to terminate the SuperNode process and stop the local gRPC server.
             Args:
                 _sig: The signal number.
                 _frame: The current stack frame (not used).
             """
-            # Avoid running the shutdown process multiple times
-            if self.shutdown_initiated:
-                return
-            self.shutdown_initiated = True
 
             def terminate_process(process, timeout=5):
                 """
@@ -137,38 +133,33 @@ class FlowerTaskRunner(TaskRunner):
                 try:
                     process.terminate()
                     process.wait(timeout=timeout)
-                except:
+                except psutil.TimeoutExpired:
+                    self.logger.debug(f"Timeout expired while waiting for process {process.pid} to terminate. Killing the process.")
                     process.kill()
+                except psutil.NoSuchProcess:
+                    self.logger.debug(f"Process {process.pid} does not exist. Skipping.")
+                    pass
 
             if supernode_process.poll() is None:
                 try:
                     main_subprocess = psutil.Process(supernode_process.pid)
                     client_app_processes = main_subprocess.children(recursive=True)
                     
-                    # Wait for client app processes to complete
                     for client_app_process in client_app_processes:
-                        try:
-                            client_app_process.wait(timeout=5)
-                        except psutil.NoSuchProcess:
-                            pass
-                    
-                    # Terminate client app processes if they are still running
-                    for client_app_process in client_app_processes:
-                        if client_app_process.is_running():
-                            terminate_process(client_app_process)
-                    
-                    # Terminate the supernode process
+                        terminate_process(client_app_process)
+
                     terminate_process(main_subprocess)
-                    self.logger.info("Supernode process terminated.")
+                    self.logger.info("SuperNode process terminated.")
+
                 except Exception as e:
-                    self.logger.info(f"Error during graceful shutdown: {e}")
-                    # Directly shutdown the supernode_process
+                    self.logger.debug(f"Error during graceful shutdown: {e}")
                     # Gramine does not detect psutil.Process
+                    # Give time for clientapp to stop then directly shutdown the supernode_process
                     time.sleep(10)
                     terminate_process(supernode_process)
-                    self.logger.info("Supernode process forcefully terminated.")
+                    self.logger.info("SuperNode process terminated.")
             else:
-                self.logger.info("Supernode process already terminated 1.")
+                self.logger.info("SuperNode process already terminated.")
 
             self.logger.info("Shutting down local gRPC server...")
             server.stop(0)
@@ -178,7 +169,7 @@ class FlowerTaskRunner(TaskRunner):
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        self.logger.info("Press CTRL+C to stop the server and supernode process.")
+        self.logger.info("Press CTRL+C to stop the server and SuperNode process.")
         
         try:
             while not termination_event.is_set():

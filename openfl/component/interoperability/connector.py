@@ -54,9 +54,9 @@ class Connector:
                 for p in still_alive:
                     p.kill()
                 # Terminate the main process
-                self._process.terminate()
                 try:
-                    self._process.wait(timeout=1)
+                    self._process.terminate()
+                    self._process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     self._process.kill()
                 self._process = None
