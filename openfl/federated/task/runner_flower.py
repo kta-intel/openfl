@@ -155,12 +155,14 @@ class FlowerTaskRunner(TaskRunner):
                     self.logger.debug(f"Error during graceful shutdown: {e}")
                     # Gramine does not detect psutil.Process
                     # Give time for clientapp to stop then directly shutdown the supernode_process
-                    try:
-                        supernode_process.terminate()
-                        supernode_process.wait(timeout=10)
-                    except:
-                        self.logger.debug(f"Timeout expired while waiting for process {supernode_process.pid} to terminate. Killing the process.")
-                        supernode_process.kill()
+                    time.sleep(10)
+                    supernode_process.kill()
+                    # try:
+                    #     supernode_process.terminate()
+                    #     supernode_process.wait(timeout=5)
+                    # except:
+                    #     self.logger.debug(f"Timeout expired while waiting for process {supernode_process.pid} to terminate. Killing the process.")
+                    #     supernode_process.kill()
                         
                     self.logger.info("SuperNode process terminated.")
             else:
