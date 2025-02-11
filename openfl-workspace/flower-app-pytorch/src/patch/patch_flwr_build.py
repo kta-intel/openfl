@@ -134,7 +134,7 @@ def build(
     ### PATCH ###
     # REASONING: original code writes to /tmp/ by default. Writing to flwr_home allows us to consolidate written files
     # Also, return final_path
-    final_path = Path(flwr_home) / fab_filename
+    final_path = os.path.join(flwr_home, fab_filename)
     #############
 
     shutil.move(temp_filename, final_path)

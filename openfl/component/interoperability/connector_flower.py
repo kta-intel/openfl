@@ -110,11 +110,9 @@ class ConnectorFlower(Connector):
         
         if self.flwr_run_command:
             self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
-            flwr_run_process = subprocess.run(self.flwr_run_command, capture_output=True, text=True)
-            print(flwr_run_process) #DEBUG
-            print(flwr_run_process.stdout) #DEBUG
+            flwr_run_process = subprocess.run(self.flwr_run_command, stdout=subprocess.PIPE, text=True)
+            print(flwr_run_process.stdout)
             stdout_output = json.loads(flwr_run_process.stdout)
-            print(stdout_output) #DEBUG
             self.local_grpc_client.set_run_id(stdout_output['run-id'])
 
     def stop(self):
