@@ -80,8 +80,7 @@ class FlowerTaskRunner(TaskRunner):
             If auto_shutdown is enabled, logs a message indicating that the final reply 
             has been sent and triggers the SIGTERM signal handler to initiate shutdown.
             """
-            if self.auto_shutdown:
-                self.shutdown_requested = True
+            self.shutdown_requested = True
 
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
         grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(
