@@ -1,5 +1,6 @@
 import subprocess
 import toml
+import json
 from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
@@ -30,7 +31,7 @@ class ConnectorFlower(Connector):
         self.local_grpc_client = self._get_local_grpc_client()
 
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
-        self.flwr_run_process = None
+        self.run_id = None
 
     def _get_local_grpc_client(self):
         """
@@ -93,9 +94,9 @@ class ConnectorFlower(Connector):
         federation_name = self.flwr_run_params.get("federation_name")
 
         if self.flwr_run_params.get("patch"):
-            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{self.flwr_app_name}"]
+            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{self.flwr_app_name}", "--format", "json"]
         else:
-            command = ["flwr", "run", f"./src/{self.flwr_app_name}"]
+            command = ["flwr", "run", f"./src/{self.flwr_app_name}", "--format", "json"]
 
         if federation_name:
             command.append(federation_name)
@@ -111,7 +112,9 @@ class ConnectorFlower(Connector):
         
         if self.flwr_run_command:
             self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
-            self.flwr_run_process = subprocess.Popen(self.flwr_run_command)
+            flwr_run_process = subprocess.run(self.flwr_run_command, capture_output=True, text=True)
+            stdout_output = json.loads(flwr_run_process.stdout)
+            self.run_id = stdout_output['run_id']
 
     def stop(self):
         """
