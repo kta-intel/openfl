@@ -31,7 +31,6 @@ class ConnectorFlower(Connector):
         self.local_grpc_client = self._get_local_grpc_client()
 
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
-        self.run_id = None
 
     def _get_local_grpc_client(self):
         """
@@ -101,7 +100,6 @@ class ConnectorFlower(Connector):
         if federation_name:
             command.append(federation_name)
 
-        # import pdb; pdb.set_trace()
         return command
 
     def start(self):
@@ -113,9 +111,11 @@ class ConnectorFlower(Connector):
         if self.flwr_run_command:
             self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
             flwr_run_process = subprocess.run(self.flwr_run_command, capture_output=True, text=True)
+            print(flwr_run_process) #DEBUG
+            print(flwr_run_process.stdout) #DEBUG
             stdout_output = json.loads(flwr_run_process.stdout)
-            self.run_id = stdout_output['run-id']
-            self.local_grpc_client.set_run_id(self.run_id)
+            print(stdout_output) #DEBUG
+            self.local_grpc_client.set_run_id(stdout_output['run-id'])
 
     def stop(self):
         """
