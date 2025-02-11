@@ -115,6 +115,7 @@ class ConnectorFlower(Connector):
             flwr_run_process = subprocess.run(self.flwr_run_command, capture_output=True, text=True)
             stdout_output = json.loads(flwr_run_process.stdout)
             self.run_id = stdout_output['run-id']
+            self.local_grpc_client.set_run_id(self.run_id)
 
     def stop(self):
         """

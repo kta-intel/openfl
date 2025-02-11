@@ -9,7 +9,7 @@ class LocalGRPCClient:
     and the OpenFL Server. It converts messages between OpenFL and Flower formats
     and handles the send-receive communication with the Flower SuperNode using gRPC.
     """
-    def __init__(self, superlink_address, num_server_rounds):
+    def __init__(self, superlink_address, num_server_rounds, run_id=None):
         """
         Initialize.
 
@@ -20,6 +20,10 @@ class LocalGRPCClient:
         self.superlink_stub = grpcadapter_pb2_grpc.GrpcAdapterStub(self.superlink_channel)
         self.num_server_rounds = num_server_rounds
         self.end_experiment = False
+        self.run_id = run_id
+
+    def set_run_id(self, run_id):
+        self.run_id = run_id
 
     def send_receive(self, openfl_message, header):
         """
@@ -34,6 +38,7 @@ class LocalGRPCClient:
         """
         flower_message = openfl_to_flower_message(openfl_message)
         deserialized_message = deserialize_flower_message(flower_message)
+        print(self.run_id)
 
         # Check if clients completes the evaluation task for the final server round
         if hasattr(deserialized_message, 'messages_list'):
