@@ -50,7 +50,9 @@ class LocalGRPCClient:
         #         message.metadata.group_id == str(self.num_server_rounds) and message.metadata.message_type == "evaluate"
         #         for message in deserialized_message.messages_list
         #     )
+        print("1")
         flower_response = self.superlink_stub.SendReceive(flower_message)
+        print("2")
 
         if self.automatic_shutdown:
             self.end_experiment = self.monitor_server_app()
