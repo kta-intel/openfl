@@ -110,6 +110,7 @@ class ConnectorFlower(Connector):
                 flwr_run_stdout_output = json.loads(flwr_run_process.stdout)
                 flwr_run_id = flwr_run_stdout_output['run-id']
                 flwr_app_name = self.flwr_run_params.get("flwr_app_name")
+                print(flwr_run_id)
                 self.local_grpc_client.set_run_id(flwr_run_id, flwr_app_name)
 
     def stop(self):

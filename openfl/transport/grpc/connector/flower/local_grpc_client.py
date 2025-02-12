@@ -77,6 +77,7 @@ class LocalGRPCClient:
         Returns:
             bool: True if the experiment has ended, False otherwise.
         """
+        print(self.flwr_ls_command)
         flwr_ls_process = subprocess.run(self.flwr_ls_command, stdout=subprocess.PIPE, text=True)
         print(flwr_ls_process)
         print(flwr_ls_process.stdout)
