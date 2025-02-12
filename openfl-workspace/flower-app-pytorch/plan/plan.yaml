@@ -13,7 +13,7 @@ connector :
   defaults : plan/defaults/connector.yaml
   template : openfl.component.ConnectorFlower
   settings :
-    auto_shutdown : True
+    automatic_shutdown : True
     superlink_params :
       insecure : True
       serverappio-api-address : 127.0.0.1:9091 # note [kta-intel]: ServerApp will connect here
