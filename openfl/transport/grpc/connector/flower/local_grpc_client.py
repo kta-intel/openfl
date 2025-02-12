@@ -39,7 +39,10 @@ class LocalGRPCClient:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
         flower_message = openfl_to_flower_message(openfl_message)
-        # deserialized_message = deserialize_flower_message(flower_message)
+        deserialized_message = deserialize_flower_message(flower_message)
+        if hasattr(deserialized_message, 'messages_list'):
+            for message in deserialized_message.messages_list:
+                self.round = message.metadata.group_id
 
         # # Check if clients completes the evaluation task for the final server round
         # if hasattr(deserialized_message, 'messages_list'):
@@ -51,6 +54,7 @@ class LocalGRPCClient:
 
         if self.automatic_shutdown:
             self.end_experiment = self.monitor_server_app()
+            print(self.end_experiment)
 
         openfl_response = flower_to_openfl_message(flower_response, header=header, end_experiment=self.end_experiment)
         return openfl_response
@@ -74,6 +78,8 @@ class LocalGRPCClient:
             bool: True if the experiment has ended, False otherwise.
         """
         flwr_ls_process = subprocess.run(self.flwr_ls_command, stdout=subprocess.PIPE, text=True)
+        print(flwr_ls_process)
+        print(flwr_ls_process.stdout)
         flwr_ls_output = json.loads(flwr_ls_process.stdout)
 
         for run in flwr_ls_output["runs"]:
