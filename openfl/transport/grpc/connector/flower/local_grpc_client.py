@@ -12,7 +12,7 @@ class LocalGRPCClient:
     and the OpenFL Server. It converts messages between OpenFL and Flower formats
     and handles the send-receive communication with the Flower SuperNode using gRPC.
     """
-    def __init__(self, superlink_address, automatic_shutdown=False):
+    def __init__(self, superlink_address, automatic_shutdown=False, is_flwr_serverapp_running_callback=None):
         """
         Initialize.
 
@@ -24,9 +24,7 @@ class LocalGRPCClient:
 
         self.automatic_shutdown = automatic_shutdown
         self.end_experiment = False
-
-        self.run_id = None
-        self.flwr_ls_command = None
+        self.is_flwr_serverapp_running_callback = is_flwr_serverapp_running_callback
 
         self.logger = getLogger(__name__)
 
@@ -42,54 +40,17 @@ class LocalGRPCClient:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
         flower_message = openfl_to_flower_message(openfl_message)
-        self.logger.info(f"1")
+
         deserialized_message = deserialize_flower_message(flower_message)
         if hasattr(deserialized_message, 'messages_list'):
             for message in deserialized_message.messages_list:
                 self.round = message.metadata.group_id
 
-        # # Check if clients completes the evaluation task for the final server round
-        # if hasattr(deserialized_message, 'messages_list'):
-        #     self.end_experiment = any(
-        #         message.metadata.group_id == str(self.num_server_rounds) and message.metadata.message_type == "evaluate"
-        #         for message in deserialized_message.messages_list
-        #     )
         flower_response = self.superlink_stub.SendReceive(flower_message)
-        self.logger.debug(f"2")
 
         if self.automatic_shutdown:
-            self.logger.debug(f"3")
-            self.end_experiment = self.monitor_server_app()
-            print(self.end_experiment)
+            self.end_experiment = not self.is_flwr_serverapp_running_callback()
+            print(self.is_flwr_serverapp_running_callback())
 
         openfl_response = flower_to_openfl_message(flower_response, header=header, end_experiment=self.end_experiment)
         return openfl_response
-    
-    def set_run_id(self, run_id, flwr_app_name):
-        """
-        Set the run ID for the Flower application and build the flwr_ls_command.
-
-        Args:
-            run_id: The run ID of the Flower application
-            flwr_app_name: The name of the Flower application
-        """
-        self.run_id = run_id
-        self.flwr_ls_command = ["flwr", "ls", f"./src/{flwr_app_name}", "--format", "json", "--run-id", str(self.run_id)]
-
-    def monitor_server_app(self) -> bool:
-        """
-        Run the `flwr ls` command to monitor the Flower application.
-        
-        Returns:
-            bool: True if the experiment has ended, False otherwise.
-        """
-        self.logger.debug(f"{self.flwr_ls_command}")
-        flwr_ls_process = subprocess.run(self.flwr_ls_command, stdout=subprocess.PIPE, text=True)
-        self.logger.debug(f"{flwr_ls_process}")
-        flwr_ls_output = json.loads(flwr_ls_process.stdout)
-        self.logger.debug(f"{flwr_ls_output}")
-
-        for run in flwr_ls_output["runs"]:
-            if "finished" in run["status"]:
-                return True
-        return False

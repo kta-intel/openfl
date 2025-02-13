@@ -21,12 +21,13 @@ class ConnectorFlower(Connector):
             superlink_params (dict): A dictionary of Flower server settings.
             flwr_run_params (dict, optional): A dictionary containing the Flower run parameters. Defaults to None.
         """
+        self.automatic_shutdown = automatic_shutdown
         self.superlink_params = superlink_params
+        self.flwr_serverapp_command = None
         command = self._build_command()
         super().__init__(command, component_name="Flower")
 
         self.flwr_run_params = flwr_run_params
-        self.automatic_shutdown = automatic_shutdown
         self.local_grpc_client = self._get_local_grpc_client()
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
 
@@ -41,7 +42,7 @@ class ConnectorFlower(Connector):
         """
         connector_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
 
-        return LocalGRPCClient(connector_address, self.automatic_shutdown)
+        return LocalGRPCClient(connector_address, self.automatic_shutdown, self.is_flwr_serverapp_running)
 
     def _build_command(self) -> list[str]:
         """
@@ -58,8 +59,6 @@ class ConnectorFlower(Connector):
         if "insecure" in self.superlink_params:
             if self.superlink_params["insecure"]:
                 command += ["--insecure"]
-        else:
-            command += ["--insecure"]
 
         if "serverappio-api-address" in self.superlink_params:
             command += ["--serverappio-api-address", str(self.superlink_params["serverappio-api-address"])]
@@ -73,7 +72,39 @@ class ConnectorFlower(Connector):
             command += ["--exec-api-address", str(self.superlink_params["exec-api-address"])]
             # flwr default: 0.0.0.0:9093
 
+        if self.automatic_shutdown:
+            command += ["--isolation", "process"]
+            self.flwr_serverapp_command = self._build_flwr_serverapp_command()
+            # flwr will default to "--isolation subprocess"
+
         return command
+
+    def _build_flwr_serverapp_command(self) -> list[str]:
+        """
+        Start the Flower SuperLink based on superlink_params.
+
+        Returns:
+            list[str]: A list representing the Flower server start command.
+        """
+        command = ["flwr-serverapp", "--run-once"]
+
+        if "insecure" in self.superlink_params:
+            if self.superlink_params["insecure"]:
+                command += ["--insecure"]
+
+        if "serverappio-api-address" in self.superlink_params:
+            command += ["--serverappio-api-address", str(self.superlink_params["serverappio-api-address"])]
+            # flwr default: 0.0.0.0:9091
+
+        return command
+
+    def is_flwr_serverapp_running(self):
+        """
+        Check if the flwr_serverapp subprocess is still running.
+        """
+        if hasattr(self, 'flwr_serverapp_subprocess'):
+            return self.flwr_serverapp_subprocess.poll() is None
+        return False
 
     def _build_flwr_run_command(self) -> list[str]:
         """
@@ -103,16 +134,10 @@ class ConnectorFlower(Connector):
         
         if self.flwr_run_command:
             self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
-            flwr_run_process = subprocess.run(self.flwr_run_command, stdout=subprocess.PIPE, text=True)
+            subprocess.run(self.flwr_run_command)
 
-            self.logger.debug(f"{flwr_run_process.stdout}")
-
-            if self.automatic_shutdown:
-                flwr_run_stdout_output = json.loads(flwr_run_process.stdout)
-                flwr_run_id = flwr_run_stdout_output['run-id']
-                flwr_app_name = self.flwr_run_params.get("flwr_app_name")
-                self.logger.debug(f"{flwr_run_id}")
-                self.local_grpc_client.set_run_id(flwr_run_id, flwr_app_name)
+            if self.flwr_serverapp_command:
+                self.flwr_serverapp_subprocess = subprocess.Popen(self.flwr_serverapp_command)
 
     def stop(self):
         """
