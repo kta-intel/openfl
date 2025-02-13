@@ -25,6 +25,7 @@ class LocalGRPCClient:
         self.automatic_shutdown = automatic_shutdown
         self.end_experiment = False
         self.is_flwr_serverapp_running_callback = is_flwr_serverapp_running_callback
+        self.round_number = 0
 
         self.logger = getLogger(__name__)
 
@@ -44,13 +45,12 @@ class LocalGRPCClient:
         deserialized_message = deserialize_flower_message(flower_message)
         if hasattr(deserialized_message, 'messages_list'):
             for message in deserialized_message.messages_list:
-                self.round = message.metadata.group_id
+                self.round_number = message.metadata.group_id
 
         flower_response = self.superlink_stub.SendReceive(flower_message)
 
         if self.automatic_shutdown:
             self.end_experiment = not self.is_flwr_serverapp_running_callback()
-            print(self.is_flwr_serverapp_running_callback())
 
         openfl_response = flower_to_openfl_message(flower_response, header=header, end_experiment=self.end_experiment)
         return openfl_response

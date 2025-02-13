@@ -47,7 +47,6 @@ class FlowerTaskRunner(TaskRunner):
         self.client_port = base_port + self.partition_id
         self.auto_shutdown = auto_shutdown
         self.patch = kwargs.get('patch')
-        self.shutdown_initiated = False # Flag to ensure signal handler runs only once
         self.shutdown_requested = False # Flag signal shutdown
 
     def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
@@ -156,12 +155,6 @@ class FlowerTaskRunner(TaskRunner):
                     # Give time for clientapp to stop then directly shutdown the supernode_process
                     time.sleep(10)
                     supernode_process.kill()
-                    # try:
-                    #     supernode_process.terminate()
-                    #     supernode_process.wait(timeout=5)
-                    # except:
-                    #     self.logger.debug(f"Timeout expired while waiting for process {supernode_process.pid} to terminate. Killing the process.")
-                    #     supernode_process.kill()
                         
                     self.logger.info("SuperNode process terminated.")
             else:
