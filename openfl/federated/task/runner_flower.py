@@ -29,7 +29,7 @@ class FlowerTaskRunner(TaskRunner):
     - Automatic Shutdown: If enabled, the system will monitor the activity of subprocesses and 
       automatically shut down if no new subprocess starts within a certain time frame.
     """
-    def __init__(self, auto_shutdown=True, **kwargs):
+    def __init__(self, **kwargs):
         """
         Initializes the FlowerTaskRunner.
 
@@ -45,7 +45,6 @@ class FlowerTaskRunner(TaskRunner):
 
         base_port = 5000
         self.client_port = base_port + self.partition_id
-        self.auto_shutdown = auto_shutdown
         self.patch = kwargs.get('patch')
         self.shutdown_requested = False # Flag signal shutdown
 
