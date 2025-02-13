@@ -30,6 +30,7 @@ class ConnectorFlower(Connector):
         self.flwr_run_params = flwr_run_params
         self.local_grpc_client = self._get_local_grpc_client()
         self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
+        self.signal_shutdown_sent = False
 
     def _get_local_grpc_client(self):
         """
@@ -102,9 +103,31 @@ class ConnectorFlower(Connector):
         """
         Check if the flwr_serverapp subprocess is still running.
         """
-        if hasattr(self, 'flwr_serverapp_subprocess'):
-            return self.flwr_serverapp_subprocess.poll() is None
+        if not hasattr(self, 'flwr_serverapp_subprocess'):
+            self.logger.debug("[OpenFL Connector] ServerApp was never started.")
+            return False
+
+        if self.flwr_serverapp_subprocess.poll() is None:
+            self.logger.debug("[OpenFL Connector] ServerApp is still running.")
+            return True
+
+        if not self.signal_shutdown_sent:
+            self.signal_shutdown_sent = True
+            self.logger.info("[OpenFL Connector] Experiment has ended. Sending signal to shut down Flower components.")
+
         return False
+    
+    def _stop_flwr_serverapp(self):
+        """
+        Stop the `flwr_serverapp` subprocess if it is still running.
+        """
+        if hasattr(self, 'flwr_serverapp_subprocess') and self.flwr_serverapp_subprocess.poll() is None:
+            self.logger.debug("[OpenFL Connector] ServerApp still running. Stopping...")
+            self.flwr_serverapp_subprocess.terminate()
+            try:
+                self.flwr_serverapp_subprocess.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.flwr_serverapp_subprocess.kill()
 
     def _build_flwr_run_command(self) -> list[str]:
         """
@@ -117,9 +140,9 @@ class ConnectorFlower(Connector):
         flwr_app_name = self.flwr_run_params.get("flwr_app_name")
 
         if self.flwr_run_params.get("patch"):
-            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{flwr_app_name}", "--format", "json"]
+            command = ["python", "src/patch/flwr_run_patch.py", "run", f"./src/{flwr_app_name}"]
         else:
-            command = ["flwr", "run", f"./src/{flwr_app_name}", "--format", "json"]
+            command = ["flwr", "run", f"./src/{flwr_app_name}"]
 
         if federation_name:
             command.append(federation_name)
@@ -144,3 +167,4 @@ class ConnectorFlower(Connector):
         Stop the `flower-superlink` subprocess.
         """
         super().stop()
+        self._stop_flwr_serverapp()
