@@ -1,5 +1,4 @@
 import subprocess
-import toml
 import json
 from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
@@ -106,11 +105,13 @@ class ConnectorFlower(Connector):
             self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
             flwr_run_process = subprocess.run(self.flwr_run_command, stdout=subprocess.PIPE, text=True)
 
+            self.logger.debug(f"{flwr_run_process.stdout}")
+
             if self.automatic_shutdown:
                 flwr_run_stdout_output = json.loads(flwr_run_process.stdout)
                 flwr_run_id = flwr_run_stdout_output['run-id']
                 flwr_app_name = self.flwr_run_params.get("flwr_app_name")
-                print(flwr_run_id)
+                self.logger.debug(f"{flwr_run_id}")
                 self.local_grpc_client.set_run_id(flwr_run_id, flwr_app_name)
 
     def stop(self):

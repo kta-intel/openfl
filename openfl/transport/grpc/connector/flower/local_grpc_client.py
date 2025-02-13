@@ -4,6 +4,7 @@ import json
 from flwr.proto import grpcadapter_pb2_grpc
 from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
+from logging import getLogger
 
 class LocalGRPCClient:
     """
@@ -27,6 +28,8 @@ class LocalGRPCClient:
         self.run_id = None
         self.flwr_ls_command = None
 
+        self.logger = getLogger(__name__)
+
     def send_receive(self, openfl_message, header):
         """
         Sends a message to the Flower SuperLink and receives the response.
@@ -39,6 +42,7 @@ class LocalGRPCClient:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
         flower_message = openfl_to_flower_message(openfl_message)
+        self.logger.info(f"1")
         deserialized_message = deserialize_flower_message(flower_message)
         if hasattr(deserialized_message, 'messages_list'):
             for message in deserialized_message.messages_list:
@@ -50,11 +54,11 @@ class LocalGRPCClient:
         #         message.metadata.group_id == str(self.num_server_rounds) and message.metadata.message_type == "evaluate"
         #         for message in deserialized_message.messages_list
         #     )
-        print("1")
         flower_response = self.superlink_stub.SendReceive(flower_message)
-        print("2")
+        self.logger.debug(f"2")
 
         if self.automatic_shutdown:
+            self.logger.debug(f"3")
             self.end_experiment = self.monitor_server_app()
             print(self.end_experiment)
 
@@ -79,11 +83,11 @@ class LocalGRPCClient:
         Returns:
             bool: True if the experiment has ended, False otherwise.
         """
-        print(self.flwr_ls_command)
+        self.logger.debug(f"{self.flwr_ls_command}")
         flwr_ls_process = subprocess.run(self.flwr_ls_command, stdout=subprocess.PIPE, text=True)
-        print(flwr_ls_process)
-        print(flwr_ls_process.stdout)
+        self.logger.debug(f"{flwr_ls_process}")
         flwr_ls_output = json.loads(flwr_ls_process.stdout)
+        self.logger.debug(f"{flwr_ls_output}")
 
         for run in flwr_ls_output["runs"]:
             if "finished" in run["status"]:
