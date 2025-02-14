@@ -11,6 +11,8 @@ import signal
 import psutil
 import time
 import os
+import numpy as np
+from pathlib import Path
 
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
@@ -39,6 +41,7 @@ class FlowerTaskRunner(TaskRunner):
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
+        self.model = None
         self.logger = getLogger(__name__)
         self.num_partitions = self.data_loader.get_node_configs()[0]
         self.partition_id = self.data_loader.get_node_configs()[1]
@@ -176,3 +179,44 @@ class FlowerTaskRunner(TaskRunner):
                 time.sleep(0.1)
         except KeyboardInterrupt:
             signal_handler(signal.SIGINT, None)
+
+    def set_tensor_dict(self, tensor_dict, with_opt_vars=False):
+        """Set the tensor dictionary.
+        To be framework agnostic, this method will not attempt to load the weights into the model
+        and save out the native format. Instead, it will load and save the dictionary directly
+
+        Args:
+            tensor_dict (dict): The tensor dictionary.
+            with_opt_vars (bool): This argument is inherited from the parent class
+                but is not used in the FlowerTaskRunner.
+        """
+        self.tensor_dict = tensor_dict
+
+    def save_native(
+        self,
+        filepath,
+        **kwargs,
+    ):
+        """
+        Save model weights in a .npz file specified by the filepath.
+        The model weights are stored as a dictionary of np.ndarray
+
+        Args:
+            filepath (str): Path to the .npz file to be created by np.savez().
+            **kwargs: Additional parameters (currently not used).
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If the file extension is not '.npz'.
+        """
+        # Ensure the file extension is .npz
+        if isinstance(filepath, Path):
+            filepath = str(filepath)
+
+        # Ensure the file extension is .npz
+        assert filepath.endswith('.npz'), "Currently, only '.npz' file type is supported."
+
+        # Save the tensor dictionary to a .npz file
+        np.savez(filepath, **self.tensor_dict)
