@@ -25,7 +25,6 @@ class ConnectorFlower(Connector):
         """
         self.automatic_shutdown = automatic_shutdown
         self.superlink_params = superlink_params
-        self.flwr_serverapp_command = None
         command = self._build_command()
         super().__init__(command, component_name="Flower")
 
@@ -161,7 +160,7 @@ class ConnectorFlower(Connector):
         self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
         subprocess.run(self.flwr_run_command)
 
-        if self.flwr_serverapp_command:
+        if hasattr(self, 'flwr_serverapp_command') and self.flwr_serverapp_command:
             self.flwr_serverapp_subprocess = subprocess.Popen(self.flwr_serverapp_command)
 
     def stop(self):
