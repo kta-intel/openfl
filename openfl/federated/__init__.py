@@ -27,6 +27,12 @@ if util.find_spec("xgboost") is not None:
     from openfl.federated.data import XGBoostDataLoader
     from openfl.federated.task import FederatedModel  # NOQA
     from openfl.federated.task import XGBoostTaskRunner
+if util.find_spec("flwr") is not None:
+    from openfl.federated.data import FederatedDataSet  # NOQA
+    from openfl.federated.data import FlowerDataLoader
+    from openfl.federated.task import FederatedModel  # NOQA
+    from openfl.federated.task import FlowerTaskRunner
+
 
 __all__ = [
     "Plan",
