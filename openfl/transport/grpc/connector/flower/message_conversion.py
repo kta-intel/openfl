@@ -1,8 +1,9 @@
 from flwr.proto import grpcadapter_pb2
 from openfl.protocols import aggregator_pb2
-# from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
 
-def flower_to_openfl_message(flower_message, header=None, end_experiment=False):
+def flower_to_openfl_message(flower_message, 
+                             header=None, 
+                             end_experiment=False):
     """
     Convert a Flower MessageContainer to an OpenFL DropPod.
 

@@ -1,5 +1,4 @@
 import subprocess
-import json
 from openfl.component.interoperability.connector import Connector
 from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
@@ -13,13 +12,16 @@ class ConnectorFlower(Connector):
     Responsible for generating the Flower server command.
     """
 
-    def __init__(self, superlink_params: dict, flwr_run_params: dict = None, 
-                 automatic_shutdown: bool = False, **kwargs):
+    def __init__(self, 
+                 superlink_params: dict, 
+                 flwr_run_params: dict, 
+                 automatic_shutdown: bool = False, 
+                 **kwargs):
         """
         Initialize ConnectorFlower by building the server command from the superlink_params.
         Args:
             superlink_params (dict): A dictionary of Flower server settings.
-            flwr_run_params (dict, optional): A dictionary containing the Flower run parameters. Defaults to None.
+            flwr_run_params (dict): A dictionary containing the Flower run parameters.
         """
         self.automatic_shutdown = automatic_shutdown
         self.superlink_params = superlink_params
@@ -28,8 +30,9 @@ class ConnectorFlower(Connector):
         super().__init__(command, component_name="Flower")
 
         self.flwr_run_params = flwr_run_params
+        self.flwr_run_command = self._build_flwr_run_command()
+
         self.local_grpc_client = self._get_local_grpc_client()
-        self.flwr_run_command = self._build_flwr_run_command() if flwr_run_params else None
         self.signal_shutdown_sent = False
 
     def _get_local_grpc_client(self):
@@ -155,12 +158,11 @@ class ConnectorFlower(Connector):
         """
         super().start()
         
-        if self.flwr_run_command:
-            self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
-            subprocess.run(self.flwr_run_command)
+        self.logger.info(f"[OpenFL Connector] Starting `flwr run` subprocess: {' '.join(self.flwr_run_command)}")
+        subprocess.run(self.flwr_run_command)
 
-            if self.flwr_serverapp_command:
-                self.flwr_serverapp_subprocess = subprocess.Popen(self.flwr_serverapp_command)
+        if self.flwr_serverapp_command:
+            self.flwr_serverapp_subprocess = subprocess.Popen(self.flwr_serverapp_command)
 
     def stop(self):
         """

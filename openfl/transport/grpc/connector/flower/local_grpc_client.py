@@ -1,9 +1,6 @@
 import grpc
-import subprocess
-import json
 from flwr.proto import grpcadapter_pb2_grpc
 from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
-from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
 from logging import getLogger
 
 class LocalGRPCClient:
@@ -12,7 +9,8 @@ class LocalGRPCClient:
     and the OpenFL Server. It converts messages between OpenFL and Flower formats
     and handles the send-receive communication with the Flower SuperNode using gRPC.
     """
-    def __init__(self, superlink_address, automatic_shutdown=False, is_flwr_serverapp_running_callback=None):
+    def __init__(self, superlink_address, automatic_shutdown=False, 
+                 is_flwr_serverapp_running_callback=None):
         """
         Initialize.
 
@@ -41,16 +39,15 @@ class LocalGRPCClient:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
         flower_message = openfl_to_flower_message(openfl_message)
-
-        deserialized_message = deserialize_flower_message(flower_message)
-        if hasattr(deserialized_message, 'messages_list'):
-            for message in deserialized_message.messages_list:
-                self.round_number = message.metadata.group_id
-
         flower_response = self.superlink_stub.SendReceive(flower_message)
 
         if self.automatic_shutdown:
+            # Check if the flwr_serverapp subprocess is still running, if it isn't
+            # then the experiment has completed
             self.end_experiment = not self.is_flwr_serverapp_running_callback()
 
-        openfl_response = flower_to_openfl_message(flower_response, header=header, end_experiment=self.end_experiment)
+        openfl_response = flower_to_openfl_message(flower_response, 
+                                                   header=header, 
+                                                   end_experiment=self.end_experiment)
+
         return openfl_response

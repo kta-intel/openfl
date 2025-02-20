@@ -1,6 +1,5 @@
 import threading
 import queue
-import grpc
 from flwr.proto import grpcadapter_pb2_grpc
 from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
 
@@ -28,7 +27,6 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         self.processing_thread = threading.Thread(target=self.process_queue)
         self.processing_thread.daemon = True
         self.processing_thread.start()
-        self.shutting_down = False  # Flag to indicate if the server is shutting down
 
     def SendReceive(self, request, context):
         """ Handles incoming gRPC requests by putting them into the request queue and waiting for the response.
@@ -50,7 +48,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         """
         while True:
             request, response_queue = self.request_queue.get()
-            openfl_request = flower_to_openfl_message(request, header=None)
+            openfl_request = flower_to_openfl_message(request)
 
             # Send request to the OpenFL server
             openfl_response = self.openfl_client.send_message_to_server(openfl_request, self.collaborator_name)
