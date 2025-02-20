@@ -11,7 +11,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
     request handling issues.
     """
 
-    def __init__(self, openfl_client, collaborator_name, message_callback):
+    def __init__(self, openfl_client, collaborator_name):
         """
         Initialize.
 
@@ -22,11 +22,14 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         """
         self.openfl_client = openfl_client
         self.collaborator_name = collaborator_name
-        self.message_callback = message_callback
+        self.end_experiment_callback = None
         self.request_queue = queue.Queue()
         self.processing_thread = threading.Thread(target=self.process_queue)
         self.processing_thread.daemon = True
         self.processing_thread.start()
+
+    def set_end_experiment_callback(self, callback):
+        self.end_experiment_callback = callback
 
     def SendReceive(self, request, context):
         """ Handles incoming gRPC requests by putting them into the request queue and waiting for the response.
@@ -56,7 +59,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
             # Check to end experiment
             if hasattr(openfl_response, 'metadata'):
                 if openfl_response.metadata['end_experiment'] == 'True':
-                    self.message_callback()
+                    self.end_experiment_callback()
 
             # Send response to Flower client
             flower_response = openfl_to_flower_message(openfl_response)

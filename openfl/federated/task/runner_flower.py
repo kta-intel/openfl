@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor
 from flwr.proto import grpcadapter_pb2_grpc
 from multiprocessing import cpu_count
 from openfl.federated.task.runner import TaskRunner
-from openfl.transport.grpc.connector.flower.local_grpc_server import LocalGRPCServer
 import subprocess
 from logging import getLogger
 import signal
@@ -51,7 +50,7 @@ class FlowerTaskRunner(TaskRunner):
         self.patch = kwargs.get('patch')
         self.shutdown_requested = False # Flag signal shutdown
 
-    def start_client_adapter(self, openfl_client, collaborator_name, **kwargs):
+    def start_client_adapter(self, local_grpc_server, **kwargs):
         """
         Starts the local gRPC server and the Flower SuperNode.
 
@@ -83,9 +82,11 @@ class FlowerTaskRunner(TaskRunner):
             """
             self.shutdown_requested = True
 
+        local_grpc_server.set_end_experiment_callback(message_callback)
+
         server = grpc.server(ThreadPoolExecutor(max_workers=cpu_count()))
         grpcadapter_pb2_grpc.add_GrpcAdapterServicer_to_server(
-            LocalGRPCServer(openfl_client, collaborator_name, message_callback), server
+            local_grpc_server, server
         )
         server.add_insecure_port(f'[::]:{local_server_port}')
         server.start()
