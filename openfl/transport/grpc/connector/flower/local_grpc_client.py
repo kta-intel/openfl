@@ -9,8 +9,7 @@ class LocalGRPCClient:
     and the OpenFL Server. It converts messages between OpenFL and Flower formats
     and handles the send-receive communication with the Flower SuperNode using gRPC.
     """
-    def __init__(self, superlink_address, automatic_shutdown=False, 
-                 is_flwr_serverapp_running_callback=None):
+    def __init__(self, superlink_address, automatic_shutdown=False):
         """
         Initialize.
 
@@ -22,10 +21,12 @@ class LocalGRPCClient:
 
         self.automatic_shutdown = automatic_shutdown
         self.end_experiment = False
-        self.is_flwr_serverapp_running_callback = is_flwr_serverapp_running_callback
-        self.round_number = 0
+        self.is_flwr_serverapp_running_callback = None
 
         self.logger = getLogger(__name__)
+
+    def set_is_flwr_serverapp_running_callback(self, is_flwr_serverapp_running_callback):
+        self.is_flwr_serverapp_running_callback = is_flwr_serverapp_running_callback
 
     def send_receive(self, openfl_message, header):
         """
@@ -41,7 +42,7 @@ class LocalGRPCClient:
         flower_message = openfl_to_flower_message(openfl_message)
         flower_response = self.superlink_stub.SendReceive(flower_message)
 
-        if self.automatic_shutdown:
+        if self.automatic_shutdown and self.is_flwr_serverapp_running_callback:
             # Check if the flwr_serverapp subprocess is still running, if it isn't
             # then the experiment has completed
             self.end_experiment = not self.is_flwr_serverapp_running_callback()

@@ -45,7 +45,7 @@ class ConnectorFlower(Connector):
         """
         connector_address = self.superlink_params.get("fleet-api-address", "0.0.0.0:9092")
 
-        return LocalGRPCClient(connector_address, self.automatic_shutdown, self.is_flwr_serverapp_running)
+        return LocalGRPCClient(connector_address, self.automatic_shutdown)
 
     def _build_command(self) -> list[str]:
         """
@@ -161,6 +161,7 @@ class ConnectorFlower(Connector):
         subprocess.run(self.flwr_run_command)
 
         if hasattr(self, 'flwr_serverapp_command') and self.flwr_serverapp_command:
+            self.local_grpc_client.set_is_flwr_serverapp_running_callback(self.is_flwr_serverapp_running)
             self.flwr_serverapp_subprocess = subprocess.Popen(self.flwr_serverapp_command)
 
     def stop(self):
