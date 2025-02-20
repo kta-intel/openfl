@@ -168,5 +168,5 @@ class ConnectorFlower(Connector):
         """
         Stop the `flower-superlink` subprocess.
         """
-        super().stop()
         self._stop_flwr_serverapp()
+        super().stop()
