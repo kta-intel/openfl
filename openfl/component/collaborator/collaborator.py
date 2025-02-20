@@ -14,7 +14,7 @@ from openfl.databases import TensorDB
 from openfl.pipelines import NoCompressionPipeline, TensorCodec
 from openfl.protocols import utils
 from openfl.utilities import TensorKey
-from openfl.transport.grpc.connector.flower.local_grpc_server import LocalGRPCServer
+from openfl.transport.grpc import connector
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +271,8 @@ class Collaborator:
             if hasattr(self.task_runner, func_name):
                 method = getattr(self.task_runner, func_name)
                 if callable(method):
+                    framework = self.task_config['settings']["connect_to"]
+                    LocalGRPCServer = connector.get_local_grpc_server(framework)
                     local_grpc_server = LocalGRPCServer(self.client, self.collaborator_name)
                     method(local_grpc_server, **kwargs) 
                     # TODO: better to use self.send_task_results(global_output_tensor_dict, round_number, task_name)
