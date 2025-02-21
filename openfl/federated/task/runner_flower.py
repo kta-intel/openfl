@@ -46,7 +46,9 @@ class FlowerTaskRunner(TaskRunner):
         self.partition_id = self.data_loader.get_node_configs()[1]
 
         base_port = 5000
+        # Only necessary to local runs in order to avoid port conflicts
         self.client_port = base_port + self.partition_id
+
         self.patch = kwargs.get('patch')
         self.shutdown_requested = False # Flag signal shutdown
 
@@ -55,6 +57,9 @@ class FlowerTaskRunner(TaskRunner):
         Starts the local gRPC server and the Flower SuperNode.
         """
         local_server_port = kwargs.get('local_server_port')
+
+        # Only necessary to local runs in order to avoid port conflicts
+        local_server_port = local_server_port - self.partition_id
 
         def message_callback():
             self.shutdown_requested = True
