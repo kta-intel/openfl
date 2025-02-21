@@ -10,6 +10,9 @@ import signal
 import psutil
 import time
 
+from openfl.transport.grpc.connector import MessageHandlerFlower
+from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,6 +35,7 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
         self.openfl_client = openfl_client
         self.collaborator_name = collaborator_name
         self.end_experiment_callback = None
+        self.model_verification_call_back = None
         self.request_queue = queue.Queue()
         self.processing_thread = threading.Thread(target=self.process_queue)
         self.processing_thread.daemon = True
@@ -41,6 +45,9 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
 
     def set_end_experiment_callback(self, callback):
         self.end_experiment_callback = callback
+
+    def set_model_verification_call_back(self, callback):
+        self.model_verification_call_back = callback
 
     def start_server(self, local_server_port):
         """Starts the gRPC server."""
@@ -90,6 +97,11 @@ class LocalGRPCServer(grpcadapter_pb2_grpc.GrpcAdapterServicer):
 
             # Send response to Flower client
             flower_response = openfl_to_flower_message(openfl_response)
+            deserialized_response = deserialize_flower_message(flower_response)
+
+            if hasattr(deserialized_response, 'messages_list') and deserialized_response.messages_list:
+                self.model_verification_call_back(MessageHandlerFlower(deserialized_response, self.collaborator_name))
+
             response_queue.put(flower_response)
             self.request_queue.task_done()
 

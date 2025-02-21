@@ -1,6 +1,10 @@
 import grpc
 from flwr.proto import grpcadapter_pb2_grpc
+
+from openfl.transport.grpc.connector import MessageHandlerFlower
 from openfl.transport.grpc.connector.flower.message_conversion import flower_to_openfl_message, openfl_to_flower_message
+from openfl.transport.grpc.connector.flower.deserialize_message import deserialize_flower_message
+
 from logging import getLogger
 
 class LocalGRPCClient:
@@ -22,11 +26,15 @@ class LocalGRPCClient:
         self.automatic_shutdown = automatic_shutdown
         self.end_experiment = False
         self.is_flwr_serverapp_running_callback = None
+        self.callback = None
 
         self.logger = getLogger(__name__)
 
     def set_is_flwr_serverapp_running_callback(self, is_flwr_serverapp_running_callback):
         self.is_flwr_serverapp_running_callback = is_flwr_serverapp_running_callback
+
+    def set_callback(self, callback):
+        self.callback = callback
 
     def send_receive(self, openfl_message, header):
         """
@@ -40,15 +48,25 @@ class LocalGRPCClient:
             The response from the Flower SuperLink, converted back to OpenFL format.
         """
         flower_message = openfl_to_flower_message(openfl_message)
+        deserialized_message = deserialize_flower_message(flower_message)
+        if hasattr(deserialized_message, 'messages_list') and deserialized_message.messages_list:
+           self.logger.info(f"{openfl_message.header.sender}")
+           self.callback(MessageHandlerFlower(deserialized_message, openfl_message.header.sender))
+        
         flower_response = self.superlink_stub.SendReceive(flower_message)
 
+        deserialized_response = deserialize_flower_message(flower_response)
+        if hasattr(deserialized_response, 'messages_list') and deserialized_response.messages_list:
+           self.callback(MessageHandlerFlower(deserialized_response, 'aggregator'))
+
         if self.automatic_shutdown and self.is_flwr_serverapp_running_callback:
-            # Check if the flwr_serverapp subprocess is still running, if it isn't
-            # then the experiment has completed
+            # Check if the flwr_serverapp subprocess is still running, 
+            # if it isn't then the experiment has completed
             self.end_experiment = not self.is_flwr_serverapp_running_callback()
 
         openfl_response = flower_to_openfl_message(flower_response, 
                                                    header=header, 
                                                    end_experiment=self.end_experiment)
+
 
         return openfl_response
