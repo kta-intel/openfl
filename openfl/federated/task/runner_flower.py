@@ -6,6 +6,7 @@ import os
 import numpy as np
 from pathlib import Path
 import sys
+import socket
 
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
@@ -46,12 +47,13 @@ class FlowerTaskRunner(TaskRunner):
 
         self.model = None
         self.logger = getLogger(__name__)
-        self.num_partitions = self.data_loader.get_node_configs()[0]
-        self.partition_id = self.data_loader.get_node_configs()[1]
 
-        base_port = 5000
-        # Only necessary to local runs in order to avoid port conflicts
-        self.client_port = base_port + self.partition_id
+        self.data_path = self.data_loader.get_node_configs()
+
+        self.client_port = kwargs.get('client_port')
+        if self.client_port is None:
+            self.client_port = get_dynamic_port()
+
         self.shutdown_requested = False # Flag signal shutdown
 
     def start_client_adapter(self, local_grpc_server, **kwargs):
@@ -60,15 +62,14 @@ class FlowerTaskRunner(TaskRunner):
         """
         local_server_port = kwargs.get('local_server_port')
 
-        # Only necessary to local runs in order to avoid port conflicts
-        local_server_port = local_server_port - self.partition_id
-
         def message_callback():
             self.shutdown_requested = True
 
         # TODO: Can we isolate the local_grpc_server from the task runner?
         local_grpc_server.set_end_experiment_callback(message_callback)
-        local_grpc_server.start_server(local_server_port)
+        local_grpc_server.start_server(0)
+
+        local_server_port = local_grpc_server.get_port()
 
         if self.patch:
             command = [
@@ -78,7 +79,7 @@ class FlowerTaskRunner(TaskRunner):
                 "--grpc-adapter",
                 "--superlink", f"127.0.0.1:{local_server_port}",
                 "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
-                "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
+                "--node-config", f"data-path='{self.data_path}'"
             ]
         else:
             command = [
@@ -87,7 +88,7 @@ class FlowerTaskRunner(TaskRunner):
                 "--grpc-adapter",
                 "--superlink", f"127.0.0.1:{local_server_port}",
                 "--clientappio-api-address", f"127.0.0.1:{self.client_port}",
-                "--node-config", f"num-partitions={self.num_partitions} partition-id={self.partition_id}"
+                "--node-config", f"data-path='{self.data_path}'"
             ]
 
         supernode_process = subprocess.Popen(command, shell=False)
@@ -180,3 +181,13 @@ def install_flower_FAB(flwr_app_name):
         "install",
         str(newest_fab_file)
     ])
+
+def get_dynamic_port():
+    # Create a socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Bind to port 0 to let the OS assign an available port
+        s.bind(('', 0))
+        # Get the assigned port number
+        port = s.getsockname()[1]
+    return port
+    

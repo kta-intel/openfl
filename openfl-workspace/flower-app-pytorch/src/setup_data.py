@@ -19,7 +19,7 @@ def main(num_partitions):
 
     # Function to save partition data
     def save_partition_data(partition_id, partition_train_test):
-        partition_dir = os.path.join(save_dir, f"{partition_id}")
+        partition_dir = os.path.join(save_dir, f"{partition_id+1}")
         os.makedirs(partition_dir, exist_ok=True)
         
         train_data_path = os.path.join(partition_dir, "train")
