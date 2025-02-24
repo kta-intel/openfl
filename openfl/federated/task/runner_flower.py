@@ -1,17 +1,11 @@
-import threading
-import grpc
-from concurrent.futures import ThreadPoolExecutor
-from flwr.proto import grpcadapter_pb2_grpc
-from multiprocessing import cpu_count
 from openfl.federated.task.runner import TaskRunner
 import subprocess
 from logging import getLogger
-import signal
-import psutil
 import time
 import os
 import numpy as np
 from pathlib import Path
+import sys
 
 os.environ["FLWR_HOME"] = os.path.join(os.getcwd(), "src/.flwr")
 os.makedirs(os.environ["FLWR_HOME"], exist_ok=True)
@@ -40,6 +34,16 @@ class FlowerTaskRunner(TaskRunner):
             **kwargs: Additional parameters to pass to the functions.
         """
         super().__init__(**kwargs)
+
+        self.patch = kwargs.get('patch')
+        if self.data_loader is None:
+            flwr_app_name = kwargs.get('flwr_app_name')
+            install_flower_app(flwr_app_name)
+            
+            if self.patch:
+                install_flower_FAB(flwr_app_name)
+            return
+
         self.model = None
         self.logger = getLogger(__name__)
         self.num_partitions = self.data_loader.get_node_configs()[0]
@@ -48,8 +52,6 @@ class FlowerTaskRunner(TaskRunner):
         base_port = 5000
         # Only necessary to local runs in order to avoid port conflicts
         self.client_port = base_port + self.partition_id
-
-        self.patch = kwargs.get('patch')
         self.shutdown_requested = False # Flag signal shutdown
 
     def start_client_adapter(self, local_grpc_server, **kwargs):
@@ -143,3 +145,38 @@ class FlowerTaskRunner(TaskRunner):
 
         # Save the tensor dictionary to a .npz file
         np.savez(filepath, **self.tensor_dict)
+
+
+def install_flower_app(flwr_app_name):
+    """Install the Flower application."""
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", f"./src/{flwr_app_name}"],
+        shell=False,
+    )
+
+def install_flower_FAB(flwr_app_name):
+    """Build and install the patch for the Flower application."""
+    flwr_dir = os.environ["FLWR_HOME"]
+    
+    # Run the build command
+    subprocess.check_call([
+        sys.executable, 
+        "src/patch/flwr_run_patch.py", 
+        "build", 
+        "--app", 
+        f"./src/{flwr_app_name}"
+    ])
+    
+    # List .fab files after running the build command
+    fab_files = list(Path(flwr_dir).glob("*.fab"))
+    
+    # Determine the newest .fab file
+    newest_fab_file = max(fab_files, key=os.path.getmtime)
+    
+    # Run the install command using the newest .fab file
+    subprocess.check_call([
+        sys.executable,
+        "src/patch/flwr_run_patch.py",
+        "install",
+        str(newest_fab_file)
+    ])

@@ -40,6 +40,7 @@ task_runner :
   template : openfl.federated.task.runner_flower.FlowerTaskRunner
   settings :
     patch : True
+    flwr_app_name : "app-pytorch"
 
 network :
   defaults : plan/defaults/network.yaml
