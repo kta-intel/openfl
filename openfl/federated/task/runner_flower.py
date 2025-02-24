@@ -39,8 +39,6 @@ class FlowerTaskRunner(TaskRunner):
         self.patch = kwargs.get('patch')
         if self.data_loader is None:
             flwr_app_name = kwargs.get('flwr_app_name')
-            install_flower_app(flwr_app_name)
-            
             if self.patch:
                 install_flower_FAB(flwr_app_name)
             return
@@ -147,13 +145,6 @@ class FlowerTaskRunner(TaskRunner):
         # Save the tensor dictionary to a .npz file
         np.savez(filepath, **self.tensor_dict)
 
-
-def install_flower_app(flwr_app_name):
-    """Install the Flower application."""
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", f"./src/{flwr_app_name}"],
-        shell=False,
-    )
 
 def install_flower_FAB(flwr_app_name):
     """Build and install the patch for the Flower application."""
