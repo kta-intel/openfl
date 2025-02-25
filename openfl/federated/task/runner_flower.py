@@ -145,6 +145,9 @@ class FlowerTaskRunner(TaskRunner):
         # Save the tensor dictionary to a .npz file
         np.savez(filepath, **self.tensor_dict)
 
+    def initialize_tensorkeys_for_functions(self, with_opt_vars=False):
+        pass
+
 
 def install_flower_FAB(flwr_app_name):
     """Build and install the patch for the Flower application."""

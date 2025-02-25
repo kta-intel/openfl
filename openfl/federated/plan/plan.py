@@ -491,12 +491,8 @@ class Plan:
         if self.runner_ is None:
             self.runner_ = Plan.build(**defaults)
 
-        # Define task dependencies after taskrunner has been initialized
-        if 'Flower' in defaults['template']:
-            return self.runner_
-        else:
-            self.runner_.initialize_tensorkeys_for_functions()
-            return self.runner_
+        self.runner_.initialize_tensorkeys_for_functions()
+        return self.runner_
 
     # Python interactive api
     def get_core_task_runner(self, data_loader=None, model_provider=None, task_keeper=None):
