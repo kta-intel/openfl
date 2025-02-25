@@ -340,13 +340,12 @@ class Plan:
         return self.assigner_
     
     def get_connector(self):
-        """Get federated learning exchange object."""
+        """Get OpenFL Connector object."""
         defaults = self.config.get("connector")
+        self.logger.info("Connector defaults: %s", defaults)
 
         if self.connector_ is None and defaults:
             self.connector_ = Plan.build(**defaults)
-        else:
-            self.connector_ = None
 
         return self.connector_
 
