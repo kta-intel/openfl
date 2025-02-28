@@ -20,9 +20,12 @@ def save_model(tensor_dict, round_number, file_path):
 
 # from flwr.server.strategy import FedAvg
 from flwr.server.client_proxy import ClientProxy
-from flwr.common import FitRes, Scalar, Parameters, parameters_to_ndarrays, Metrics
+from flwr.common import FitRes, EvaluateRes, Scalar, Parameters, parameters_to_ndarrays
 from typing import Optional, Union, OrderedDict, List, Tuple
 import numpy as np
+from flwr.server.strategy.aggregate import weighted_loss_avg
+from flwr.common.logger import log
+from logging import WARNING
 
 net = Net()
 
@@ -30,6 +33,7 @@ class SaveModelStrategy(FedAvg):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.largest_loss = 1e9
+        self.params_dict = None
 
     def aggregate_fit(
         self,
@@ -45,35 +49,54 @@ class SaveModelStrategy(FedAvg):
         )
 
         if aggregated_parameters is not None:
-            print(f"Saving round {server_round} aggregated_parameters...")
-
             # Convert `Parameters` to `list[np.ndarray]`
             aggregated_ndarrays: list[np.ndarray] = parameters_to_ndarrays(
                 aggregated_parameters
             )
 
 
-            params_dict =  OrderedDict(zip(net.state_dict().keys(), aggregated_ndarrays))
+            self.params_dict =  OrderedDict(zip(net.state_dict().keys(), aggregated_ndarrays))
 
             # Save the model to disk
-            save_model(params_dict, server_round, './save/last.pbuf')
-
-            if aggregated_metrics["train_loss"] < self.largest_loss:
-                self.largest_loss = aggregated_metrics["train_loss"]
-                save_model(params_dict, server_round, './save/best.pbuf')
+            save_model(self.params_dict , server_round, './save/last.pbuf')
 
         return aggregated_parameters, aggregated_metrics
 
+    def aggregate_evaluate(
+        self,
+        server_round: int,
+        results: list[tuple[ClientProxy, EvaluateRes]],
+        failures: list[Union[tuple[ClientProxy, EvaluateRes], BaseException]],
+    ) -> tuple[Optional[float], dict[str, Scalar]]:
+        """Aggregate evaluation losses using weighted average."""
+        if not results:
+            return None, {}
+        # Do not aggregate if there are failures and failures are not accepted
+        if not self.accept_failures and failures:
+            return None, {}
 
-def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
-    # Multiply accuracy of each client by number of examples used
+        # Aggregate loss
+        loss_aggregated = weighted_loss_avg(
+            [
+                (evaluate_res.num_examples, evaluate_res.loss)
+                for _, evaluate_res in results
+            ]
+        )
 
-    print(metrics)
-    losses = [num_examples * m["train_loss"] for num_examples, m in metrics]
-    examples = [num_examples for num_examples, _ in metrics]
 
-    # Aggregate and return custom metric (weighted average)
-    return {"train_loss": sum(losses) / sum(examples)}
+        # Aggregate custom metrics if aggregation fn was provided
+        metrics_aggregated = {}
+        if self.evaluate_metrics_aggregation_fn:
+            eval_metrics = [(res.num_examples, res.metrics) for _, res in results]
+            metrics_aggregated = self.evaluate_metrics_aggregation_fn(eval_metrics)
+        elif server_round == 1:  # Only log this warning once
+            log(WARNING, "No evaluate_metrics_aggregation_fn provided")
+
+        if loss_aggregated < self.largest_loss:
+            self.largest_loss = loss_aggregated
+            save_model(self.params_dict, server_round, './save/best.pbuf')
+
+        return loss_aggregated, metrics_aggregated
 
 ##################################################################################### 
 
@@ -89,7 +112,7 @@ def server_fn(context: Context):
 
     # Define strategy
     strategy = SaveModelStrategy(
-        fit_metrics_aggregation_fn=weighted_average,
+        # fit_metrics_aggregation_fn=weighted_average,
         fraction_fit=fraction_fit,
         fraction_evaluate=1.0,
         min_available_clients=2,

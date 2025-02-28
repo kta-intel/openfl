@@ -2,6 +2,8 @@ import os
 import sys
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
+from PIL import Image
+import numpy as np
 
 def main(num_partitions):
     # Directory to save the partitions
@@ -22,11 +24,19 @@ def main(num_partitions):
         partition_dir = os.path.join(save_dir, f"{partition_id+1}")
         os.makedirs(partition_dir, exist_ok=True)
         
-        train_data_path = os.path.join(partition_dir, "train")
-        test_data_path = os.path.join(partition_dir, "test")
-        
-        partition_train_test["train"].save_to_disk(train_data_path)
-        partition_train_test["test"].save_to_disk(test_data_path)
+        for split, dataset in partition_train_test.items():
+            split_dir = os.path.join(partition_dir, split)
+            os.makedirs(split_dir, exist_ok=True)
+            
+            for idx, example in enumerate(dataset):
+                img_array = np.array(example['img'])
+                label = example['label']
+                label_dir = os.path.join(split_dir, str(label))
+                os.makedirs(label_dir, exist_ok=True)
+                
+                img = Image.fromarray(img_array)
+                img_path = os.path.join(label_dir, f"{idx}.png")
+                img.save(img_path)
 
     # Download, split, and save the dataset
     for partition_id in range(num_partitions):
