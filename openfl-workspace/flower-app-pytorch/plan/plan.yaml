@@ -13,17 +13,14 @@ connector :
   defaults : plan/defaults/connector.yaml
   template : openfl.component.ConnectorFlower
   settings :
-    automatic_shutdown : True
     superlink_params :
       insecure : True
       serverappio-api-address : 127.0.0.1:9091 # note [kta-intel]: ServerApp will connect here
       fleet-api-address :  127.0.0.1:9092 # note [kta-intel]: local gRPC client will connect here
       exec-api-address : 127.0.0.1:9093 # note [kta-intel]: port for server-app toml (for flwr run)
-      patch : True
     flwr_run_params :
       flwr_app_name : "app-pytorch"
       federation_name : "local-poc"
-      patch : True
 
 collaborator :
   defaults : plan/defaults/collaborator.yaml
@@ -38,9 +35,6 @@ data_loader :
 task_runner :
   defaults : plan/defaults/task_runner.yaml
   template : openfl.federated.task.runner_flower.FlowerTaskRunner
-  settings :
-    patch : True
-    flwr_app_name : "app-pytorch"
 
 network :
   defaults : plan/defaults/network.yaml
