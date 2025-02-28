@@ -6,9 +6,7 @@ from flwr.server.strategy import FedAvg
 from app_pytorch.task import Net, get_weights
 
 
-####################################################################################
-# TODO: Consider moving this to a separate file and importing SaveModelStrategy
-
+############################# Save Model ##########################################
 from openfl.protocols import utils
 from openfl.pipelines import NoCompressionPipeline
 def save_model(tensor_dict, round_number, file_path):
@@ -97,7 +95,6 @@ class SaveModelStrategy(FedAvg):
             save_model(self.params_dict, server_round, './save/best.pbuf')
 
         return loss_aggregated, metrics_aggregated
-
 ##################################################################################### 
 
 
