@@ -65,7 +65,7 @@ class FlowerTaskRunner(TaskRunner):
 
         # TODO: Can we isolate the local_grpc_server from the task runner?
         local_grpc_server.set_end_experiment_callback(message_callback)
-        local_grpc_server.start_server(0)
+        local_grpc_server.start_server(local_server_port)
 
         local_server_port = local_grpc_server.get_port()
 
