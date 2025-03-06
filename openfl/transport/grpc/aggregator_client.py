@@ -161,6 +161,9 @@ def _resend_data_on_reconnection(func):
                 if self.refetch_server_cert_callback is not None:
                     self.logger.info("Refetching server certificate")
                     self.root_certificate = self.refetch_server_cert_callback()
+                if not self.enable_atomic_connections:
+                    self.logger.info("Reconnecting to aggregator")
+                    self.reconnect()
                 self.sleeping_policy.sleep()
         return response
 
@@ -203,7 +206,7 @@ class AggregatorGRPCClient:
         federation_uuid=None,
         single_col_cert_common_name=None,
         refetch_server_cert_callback=None,
-        enable_atomic_connections=True,
+        enable_atomic_connections=False,
         resend_data_on_reconnection=True,
         **kwargs,
     ):
@@ -356,7 +359,7 @@ class AggregatorGRPCClient:
 
     def disconnect(self):
         """Close the gRPC channel."""
-        self.logger.debug("Disconnecting from gRPC server at %s", self.uri)
+        self.logger.info("Disconnecting from gRPC server at %s", self.uri)
         self.channel.close()
 
     def reconnect(self):
@@ -376,7 +379,7 @@ class AggregatorGRPCClient:
                 self.private_key,
             )
 
-        self.logger.debug("Connecting to gRPC at %s", self.uri)
+        self.logger.info("Connecting to gRPC at %s", self.uri)
 
         self.stub = aggregator_pb2_grpc.AggregatorStub(self.channel)
 
