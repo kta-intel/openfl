@@ -18,5 +18,4 @@ if util.find_spec("xgboost") is not None:
     from openfl.federated.data.loader_xgb import XGBoostDataLoader  # NOQA
 
 if util.find_spec("flwr") is not None:
-    from openfl.federated.data.federated_data import FederatedDataSet  # NOQA
     from openfl.federated.data.loader_flower import FlowerDataLoader  # NOQA
