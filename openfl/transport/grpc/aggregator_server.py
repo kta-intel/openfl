@@ -303,8 +303,15 @@ class AggregatorGRPCServer(aggregator_pb2_grpc.AggregatorServicer):
         self.check_request(request)
         collaborator_name = request.header.sender
 
+        header = create_header(
+            sender=self.aggregator.uuid,
+            receiver=collaborator_name,
+            federation_uuid=self.aggregator.federation_uuid,
+            single_col_cert_common_name=self.aggregator.single_col_cert_common_name,
+        )
+
         # Forward the incoming OpenFL message to the local gRPC client
-        return self.local_grpc_client.send_receive(request, header=self.get_header(collaborator_name))
+        return self.local_grpc_client.send_receive(request, header=header)
 
     def serve(self):
         """Starts the aggregator gRPC server."""

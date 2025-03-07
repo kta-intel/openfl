@@ -417,8 +417,13 @@ class AggregatorGRPCClient:
         Returns:
             The response from the OpenFL server
         """
-        self._set_header(collaborator_name)
-        openfl_message.header.CopyFrom(self.header)
+        header = create_header(
+            sender=collaborator_name,
+            receiver=self.aggregator_uuid,
+            federation_uuid=self.federation_uuid,
+            single_col_cert_common_name=self.single_col_cert_common_name,
+        )
+        openfl_message.header.CopyFrom(header)
         openfl_response = self.stub.PelicanDrop(openfl_message)
         self.validate_response(openfl_response, collaborator_name)
         return openfl_response

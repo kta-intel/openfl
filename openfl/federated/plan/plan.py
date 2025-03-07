@@ -334,7 +334,7 @@ class Plan:
     def get_connector(self):
         """Get OpenFL Connector object."""
         defaults = self.config.get("connector")
-        self.logger.info("Connector defaults: %s", defaults)
+        logger.info("Connector defaults: %s", defaults)
 
         if self.connector_ is None and defaults:
             self.connector_ = Plan.build(**defaults)
