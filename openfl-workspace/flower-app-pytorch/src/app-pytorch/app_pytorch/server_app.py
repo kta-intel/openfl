@@ -5,18 +5,6 @@ from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 from app_pytorch.task import Net, get_weights
 
-
-############################# Save Model ##########################################
-from openfl.protocols import utils
-from openfl.pipelines import NoCompressionPipeline
-def save_model(tensor_dict, round_number, file_path):
-    model = utils.construct_model_proto(
-                tensor_dict, round_number, NoCompressionPipeline()
-            )
-    utils.dump_proto(model, file_path)
-
-
-# from flwr.server.strategy import FedAvg
 from flwr.server.client_proxy import ClientProxy
 from flwr.common import FitRes, EvaluateRes, Scalar, Parameters, parameters_to_ndarrays
 from typing import Optional, Union, OrderedDict, List, Tuple
@@ -25,13 +13,11 @@ from flwr.server.strategy.aggregate import weighted_loss_avg
 from flwr.common.logger import log
 from logging import WARNING
 
-net = Net()
-
 class SaveModelStrategy(FedAvg):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.largest_loss = 1e9
-        self.params_dict = None
+        self.aggregated_ndarrays = None
 
     def aggregate_fit(
         self,
@@ -48,15 +34,11 @@ class SaveModelStrategy(FedAvg):
 
         if aggregated_parameters is not None:
             # Convert `Parameters` to `list[np.ndarray]`
-            aggregated_ndarrays: list[np.ndarray] = parameters_to_ndarrays(
+            self.aggregated_ndarrays: list[np.ndarray] = parameters_to_ndarrays(
                 aggregated_parameters
             )
 
-
-            self.params_dict =  OrderedDict(zip(net.state_dict().keys(), aggregated_ndarrays))
-
-            # Save the model to disk
-            save_model(self.params_dict , server_round, './save/last.pbuf')
+            np.savez(f"last.npz", *self.aggregated_ndarrays)
 
         return aggregated_parameters, aggregated_metrics
 
@@ -92,11 +74,9 @@ class SaveModelStrategy(FedAvg):
 
         if loss_aggregated < self.largest_loss:
             self.largest_loss = loss_aggregated
-            save_model(self.params_dict, server_round, './save/best.pbuf')
+            np.savez(f"best.npz", *self.aggregated_ndarrays)
 
         return loss_aggregated, metrics_aggregated
-##################################################################################### 
-
 
 def server_fn(context: Context):
     # Read from config
