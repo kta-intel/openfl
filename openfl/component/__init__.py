@@ -3,6 +3,8 @@
 
 """OpenFL Component Module."""
 
+from importlib import util
+
 from openfl.component.aggregator.aggregator import Aggregator
 from openfl.component.aggregator.straggler_handling import (
     CutoffTimePolicy,
@@ -12,4 +14,9 @@ from openfl.component.aggregator.straggler_handling import (
 from openfl.component.assigner.assigner import Assigner
 from openfl.component.assigner.random_grouped_assigner import RandomGroupedAssigner
 from openfl.component.assigner.static_grouped_assigner import StaticGroupedAssigner
+from openfl.component.assigner.connector_assigner import ConnectorAssigner
 from openfl.component.collaborator.collaborator import Collaborator
+from openfl.component.interoperability.connector import Connector
+
+if util.find_spec("flwr") is not None:
+    from openfl.component.interoperability.connector_flower import ConnectorFlower

@@ -15,6 +15,7 @@ from openfl.pipelines import NoCompressionPipeline, TensorCodec
 from openfl.protocols import utils
 from openfl.transport.grpc.aggregator_client import AggregatorGRPCClient
 from openfl.utilities import TensorKey
+from openfl.transport.grpc import connector
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,25 @@ class Collaborator:
             task_name = task.name
         func_name = self.task_config[task_name]["function"]
         kwargs = self.task_config[task_name]["kwargs"]
+        if func_name=="start_client_adapter":
+            # TODO: Need to determine a more general way to handle this in order to enable
+            # additional tasks to be added to be added to Connector
+            if hasattr(self.task_runner, func_name):
+                method = getattr(self.task_runner, func_name)
+                if callable(method):
+                    framework = self.task_config['settings']["connect_to"]
+                    LocalGRPCServer = connector.get_local_grpc_server(framework)
+                    local_grpc_server = LocalGRPCServer(self.client, self.collaborator_name)
+                    method(local_grpc_server, **kwargs) 
+                    # TODO: better to use self.send_task_results(global_output_tensor_dict, round_number, task_name)
+                    # maybe set global_output_tensor to empty
+                    self.client.send_local_task_results(self.collaborator_name, round_number, task_name)
+                    metrics = {f'{self.collaborator_name}/start_client_adapter': 'Completed'}
+                    return metrics
+                else:
+                    raise AttributeError(f"{func_name} is not callable on {self.task_runner}")
+            else:
+                raise AttributeError(f"{func_name} does not exist on {self.task_runner}")
 
         # this would return a list of what tensors we require as TensorKeys
         required_tensorkeys_relative = self.task_runner.get_required_tensorkeys_for_function(
