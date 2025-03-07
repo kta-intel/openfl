@@ -22,7 +22,6 @@ from openfl.utilities.secagg.setup import Setup as secagg_setup
 
 logger = logging.getLogger(__name__)
 
-import subprocess
 
 class Aggregator:
     """An Aggregator is the central node in federated learning.
@@ -75,7 +74,6 @@ class Aggregator:
         best_state_path,
         last_state_path,
         assigner,
-        connector,
         use_delta_updates=True,
         straggler_handling_policy: StragglerPolicy = CutoffTimePolicy,
         rounds_to_train=256,
@@ -143,7 +141,6 @@ class Aggregator:
         self.authorized_cols = authorized_cols
         self.uuid = aggregator_uuid
         self.federation_uuid = federation_uuid
-        self.connector = connector
 
         self.quit_job_sent_to = []
 
@@ -206,12 +203,8 @@ class Aggregator:
                 tensor_pipe=self.compression_pipeline,
             )
         else:
-            if self.connector:
-                # The model definition will be handled by the respective framework
-                self.model = {}
-            else:
-                self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
-                self._load_initial_tensors()  # keys are TensorKeys
+            self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
+            self._load_initial_tensors()  # keys are TensorKeys
 
         self.collaborator_tensor_results = {}  # {TensorKey: nparray}}
         self._secure_aggregation_enabled = secure_aggregation
@@ -308,7 +301,6 @@ class Aggregator:
             )
             task_id += 1
         return recovered
-
 
     def _load_initial_tensors(self):
         """Load all of the tensors required to begin federated learning.
@@ -742,8 +734,8 @@ class Aggregator:
         collaborator_name,
         round_number,
         task_name,
-        data_size=None,
-        named_tensors=None,
+        data_size,
+        named_tensors,
     ):
         """
         RPC called by collaborator.
@@ -807,12 +799,6 @@ class Aggregator:
             )
             return
 
-        if self.is_connector_available():
-            # Skip to end of round check
-            with self.lock:
-                self._is_collaborator_done(collaborator_name, round_number)
-                self._end_of_round_with_stragglers_check()
-
         task_key = TaskResultKey(task_name, collaborator_name, round_number)
 
         # we mustn't have results already
@@ -858,48 +844,6 @@ class Aggregator:
             self._is_collaborator_done(collaborator_name, round_number)
 
             self._end_of_round_with_stragglers_check()
-
-    def is_connector_available(self):
-        """
-        Check if the OpenFL Connector is available.
-
-        Returns:
-            bool: True if connector is available, False otherwise.
-        """
-        return self.connector is not None
-
-    def start_connector(self):
-        """
-        Start the OpenFL Connector.
-
-        Raises:
-            RuntimeError: If OpenFL Connector has not been enabled.
-        """
-        if not self.is_connector_available():
-            raise RuntimeError("OpenFL Connector has not been enabled.")
-        return self.connector.start()
-
-    def stop_connector(self):
-        """
-        Stop the OpenFL Connector.
-
-        Raises:
-            RuntimeError: If OpenFL Connector has not been enabled.
-        """
-        if not self.is_connector_available():
-            raise RuntimeError("OpenFL Connector has not been enabled.")
-        return self.connector.stop()
-
-    def get_local_grpc_client(self):
-        """
-        Get the local gRPC client for the OpenFL Connector.
-
-        Raises:
-            RuntimeError: If OpenFL Connector has not been enabled.
-        """
-        if not self.is_connector_available():
-            raise RuntimeError("OpenFL Connector has not been enabled.")
-        return self.connector.get_local_grpc_client()
 
     def _end_of_round_with_stragglers_check(self):
         """
@@ -1217,22 +1161,20 @@ class Aggregator:
         if self._end_of_round_check_done[self.round_number]:
             return
 
-        if not self.is_connector_available():
         # Compute all validation related metrics
-            logs = {}
-            for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
-                logs.update(self._compute_validation_related_task_metrics(task_name))
+        logs = {}
+        for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+            logs.update(self._compute_validation_related_task_metrics(task_name))
 
-            # End of round callbacks.
-            self.callbacks.on_round_end(self.round_number, logs)
+        # End of round callbacks.
+        self.callbacks.on_round_end(self.round_number, logs)
 
         # Once all of the task results have been processed
         self._end_of_round_check_done[self.round_number] = True
 
         # Save the latest model
-        if not self.is_connector_available():
-            logger.info("Saving round %s model...", self.round_number)
-            self._save_model(self.round_number, self.last_state_path)
+        logger.info("Saving round %s model...", self.round_number)
+        self._save_model(self.round_number, self.last_state_path)
 
         self.round_number += 1
         # resetting stragglers for task for a new round

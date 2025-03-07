@@ -1,6 +1,6 @@
 import subprocess
-from openfl.component.interoperability.connector import Connector
-from openfl.transport.grpc.connector.flower.local_grpc_client import LocalGRPCClient
+from src.connector import Connector
+from src.grpc.connector.flower.local_grpc_client import LocalGRPCClient
 
 import subprocess
 import psutil
